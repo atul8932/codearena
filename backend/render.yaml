@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: codearena-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 4000
+      - key: CLIENT_URL
+        fromEnvironment: CLIENT_URL
+      - key: JUDGE0_API_KEY
+        sync: false
+      - key: JUDGE0_HOST
+        value: judge0-ce.p.rapidapi.com
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
