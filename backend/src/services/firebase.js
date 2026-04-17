@@ -109,7 +109,9 @@ async function saveUserBattle(uid, battleData) {
         totalScore:    admin.firestore.FieldValue.increment(battleData.score || 0),
         lastPlayed:    dateKey,
       },
-      [`activity.${dateKey}`]: admin.firestore.FieldValue.increment(1),
+      activity: {
+        [dateKey]: admin.firestore.FieldValue.increment(1)
+      }
     }, { merge: true });
 
     console.log(`📊 Battle saved for user ${uid}`);

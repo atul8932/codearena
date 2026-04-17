@@ -27,7 +27,7 @@ const io = new Server(server, {
 });
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
+app.use(cors({ origin: [process.env.CLIENT_URL || 'http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5174'] }));
 app.use(express.json({ limit: '50kb' }));
 
 // ─── REST Routes ─────────────────────────────────────────────────────────────
