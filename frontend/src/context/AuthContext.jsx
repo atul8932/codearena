@@ -31,7 +31,17 @@ export function AuthProvider({ children }) {
   const signUp = async (email, password, displayName) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(cred.user, { displayName });
-    await sendEmailVerification(cred.user);
+    try {
+      const actionCodeSettings = {
+        url: `${window.location.origin}/auth`,
+        handleCodeInApp: false,
+      };
+      await sendEmailVerification(cred.user, actionCodeSettings);
+      console.log('✅ Verification email sent to', email);
+    } catch (verifyErr) {
+      console.error('❌ sendEmailVerification failed:', verifyErr.code, verifyErr.message);
+      // Don't throw — account was created; user can resend
+    }
     return cred;
   };
 
