@@ -4,9 +4,21 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import socket from '../services/socket';
 import useGameStore from '../store/gameStore';
+import { useAuth } from '../context/AuthContext';
 
 // ─── Shared Nav ──────────────────────────────────────────────────────────────
 export function TopNav({ right }) {
+  const { user, logout } = useAuth() || {};
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/auth', { replace: true });
+  };
+
+  const avatarUrl = user?.photoURL;
+  const initials  = user?.displayName?.slice(0,2).toUpperCase() || user?.email?.slice(0,2).toUpperCase() || '??';
+
   return (
     <nav className="top-nav">
       {/* Brand */}
@@ -22,6 +34,31 @@ export function TopNav({ right }) {
 
       {/* Right slot */}
       {right && right}
+
+      {/* User chip */}
+      {user && (
+        <div className="flex items-center gap-2 ml-2">
+          {/* Avatar */}
+          <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center text-xs font-bold"
+            style={{ background: avatarUrl ? 'transparent' : 'var(--accent)', color:'#fff', border:'1px solid var(--border)' }}>
+            {avatarUrl
+              ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+              : initials}
+          </div>
+          {/* Name */}
+          <span className="text-xs font-medium hidden sm:block truncate max-w-[120px]"
+            style={{ color:'var(--text-muted)' }}>
+            {user.displayName || user.email?.split('@')[0]}
+          </span>
+          {/* Logout */}
+          <button onClick={handleLogout}
+            className="btn-ghost text-xs px-2 py-1"
+            title="Sign out">
+            <span className="hidden sm:inline">Sign out</span>
+            <span className="sm:hidden">↩</span>
+          </button>
+        </div>
+      )}
     </nav>
   );
 }
@@ -49,6 +86,7 @@ const features = [
 // ─── LandingPage ─────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { user } = useAuth() || {};
   const [mode, setMode] = useState(null);
   const [playerName, setPlayerName] = useState('');
   const [roomId, setRoomId] = useState('');
@@ -57,6 +95,12 @@ export default function LandingPage() {
   const { resetAll } = useGameStore();
 
   useEffect(() => { resetAll(); }, []);
+
+  // Pre-fill name from Firebase auth
+  useEffect(() => {
+    if (user?.displayName) setPlayerName(user.displayName.slice(0,20));
+    else if (user?.email)  setPlayerName(user.email.split('@')[0].slice(0,20));
+  }, [user]);
 
   const handleConnect = () => {
     const name = playerName.trim();
