@@ -114,22 +114,22 @@ export default function LobbyPage() {
       </AnimatePresence>
 
       {/* Sub-header */}
-      <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
         <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>Battle Lobby</h1>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-dim)' }}>Share the Room ID and wait for opponents</p>
+          <h1 className="text-lg sm:text-xl font-bold" style={{ color: 'var(--text)' }}>Battle Lobby</h1>
+          <p className="text-xs mt-0.5 hidden sm:block" style={{ color: 'var(--text-dim)' }}>Share the Room ID and wait for opponents</p>
         </div>
         <div className="flex items-center gap-2">
           {player?.isHost ? (
             <button onClick={handleStart}
               disabled={realPlayers.length < 1}
-              className="btn-primary"
+              className="btn-primary text-xs sm:text-sm"
               style={!allReady && realPlayers.length > 1 ? { opacity: 0.55 } : {}}>
-              {realPlayers.length < 2 ? '⚔️ Start Solo' : allReady ? '⚔️ Start Battle!' : `⏳ ${readyCount}/${realPlayers.length} Ready`}
+              {realPlayers.length < 2 ? '⚔️ Start Solo' : allReady ? '⚔️ Start Battle!' : `⏳ ${readyCount}/${realPlayers.length}`}
             </button>
           ) : (
             <button onClick={handleReady}
-              className="btn-primary"
+              className="btn-primary text-xs sm:text-sm"
               style={myData?.isReady ? { background: 'transparent', color: 'var(--green)', border: '1px solid rgba(34,197,94,0.4)' } : {}}>
               {myData?.isReady ? '✓ Ready!' : '⚡ Ready Up'}
             </button>
@@ -138,7 +138,7 @@ export default function LobbyPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 px-6 py-5 grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="flex-1 px-3 sm:px-6 py-4 sm:py-5 grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 overflow-y-auto">
 
         {/* Left — Room info */}
         <div className="space-y-4">

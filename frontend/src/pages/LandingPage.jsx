@@ -86,13 +86,13 @@ export default function LandingPage() {
       <div className="flex-1 flex flex-col">
 
         {/* ── Sub-header ── */}
-        <div className="px-6 py-5 flex items-center justify-between"
+        <div className="px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between"
           style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: 'var(--text)' }}>Welcome to CodeArena</h1>
-            <p className="text-sm mt-0.5" style={{ color: 'var(--accent)' }}>Real-Time Multiplayer Coding Battles</p>
+            <h1 className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text)' }}>Welcome to CodeArena</h1>
+            <p className="text-xs sm:text-sm mt-0.5" style={{ color: 'var(--accent)' }}>Real-Time Multiplayer Coding Battles</p>
           </div>
-          <div className="status-online">ARENA ONLINE</div>
+          <div className="status-online text-xs">ARENA ONLINE</div>
         </div>
 
         {/* ── Main content ── */}
@@ -102,31 +102,31 @@ export default function LandingPage() {
               <motion.div key="home" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
 
                 {/* Hero */}
-                <div className="text-center py-12">
-                  <h2 className="text-4xl font-bold mb-3" style={{ color: 'var(--text)' }}>
+                <div className="text-center py-8 sm:py-12">
+                  <h2 className="text-2xl sm:text-4xl font-bold mb-3" style={{ color: 'var(--text)' }}>
                     Enter the Arena.{' '}
                     <span style={{ color: 'var(--accent)' }}>Code to Win.</span>
                   </h2>
-                  <p className="text-base mb-8 max-w-lg mx-auto" style={{ color: 'var(--text-muted)' }}>
+                  <p className="text-sm sm:text-base mb-6 sm:mb-8 max-w-lg mx-auto px-4" style={{ color: 'var(--text-muted)' }}>
                     Solve problems faster than your opponents in real-time coding battles.
                   </p>
-                  <div className="flex flex-wrap gap-3 justify-center mb-10">
-                    <button id="btn-create-room" onClick={() => setMode('create')} className="btn-primary px-8 py-2.5 text-sm">
+                  <div className="flex flex-col sm:flex-wrap sm:flex-row gap-2 sm:gap-3 justify-center mb-8 sm:mb-10 px-4 sm:px-0">
+                    <button id="btn-create-room" onClick={() => setMode('create')} className="btn-primary py-3 sm:py-2.5 text-sm w-full sm:w-auto sm:px-8">
                       ⚔️ Create Room
                     </button>
-                    <button id="btn-join-room" onClick={() => setMode('join')} className="btn-secondary px-8 py-2.5 text-sm">
+                    <button id="btn-join-room" onClick={() => setMode('join')} className="btn-secondary py-3 sm:py-2.5 text-sm w-full sm:w-auto sm:px-8">
                       🎮 Join Room
                     </button>
-                    <button id="btn-spectate" onClick={() => setMode('spectate')} className="btn-ghost px-8 py-2.5 text-sm">
+                    <button id="btn-spectate" onClick={() => setMode('spectate')} className="btn-ghost py-3 sm:py-2.5 text-sm w-full sm:w-auto sm:px-8">
                       👁️ Watch as Spectator
                     </button>
                   </div>
 
                   {/* Stats */}
-                  <div className="flex justify-center gap-12 mb-12">
+                  <div className="flex justify-center gap-6 sm:gap-12 mb-8 sm:mb-12 flex-wrap">
                     {[['2.4K+', 'Active Players'], ['18K+', 'Battles Fought'], ['200+', 'Problems'], ['4', 'Languages']].map(([v, l]) => (
                       <div key={l} className="text-center">
-                        <div className="text-2xl font-bold" style={{ color: 'var(--text)' }}>{v}</div>
+                        <div className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text)' }}>{v}</div>
                         <div className="text-xs mt-0.5" style={{ color: 'var(--text-dim)' }}>{l}</div>
                       </div>
                     ))}
@@ -156,7 +156,7 @@ export default function LandingPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.25 }}
-                className="max-w-sm mx-auto mt-8"
+                className="w-full max-w-sm mx-auto mt-4 sm:mt-8 px-0 sm:px-0"
               >
                 <div className="card">
                   <div className="flex items-center justify-between mb-5">
@@ -234,10 +234,10 @@ export default function LandingPage() {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 flex items-center justify-between text-xs"
+        <div className="px-4 sm:px-6 py-3 flex items-center justify-between text-xs"
           style={{ borderTop: '1px solid var(--border)', color: 'var(--text-dim)' }}>
           <span>CodeArena © 2024</span>
-          <span>Real-Time Multiplayer Coding Battles</span>
+          <span className="hidden sm:block">Real-Time Multiplayer Coding Battles</span>
           <span>Built with ⚡</span>
         </div>
       </div>

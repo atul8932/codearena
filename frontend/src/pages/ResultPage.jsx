@@ -78,26 +78,26 @@ export default function ResultPage() {
       {isWinner && <Confetti recycle={false} numberOfPieces={280} colors={['#F5A623','#9ca3af','#E8871A','#ef4444','#22c55e']} />}
 
       {/* Sub-header */}
-      <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid var(--border)' }}>
+      <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom:'1px solid var(--border)' }}>
         <div>
-          <h1 className="text-xl font-bold" style={{ color:'var(--text)' }}>Leaderboard</h1>
+          <h1 className="text-lg sm:text-xl font-bold" style={{ color:'var(--text)' }}>Leaderboard</h1>
           <p className="text-xs mt-0.5" style={{ color:'var(--accent)' }}>
-            {isWinner ? '🏆 Victory! You dominated the arena!' : winner ? `${anonymousMode?'???':winner.name} takes the crown with ${winner.score} pts` : "Time's Up!"}
+            {isWinner ? '🏆 Victory! You dominated the arena!' : winner ? `${anonymousMode?'???':winner.name} takes the crown` : "Time's Up!"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="btn-primary" style={{ background:'var(--accent)' }}>Current</button>
-          {player?.isHost && <button onClick={handlePlayAgain} className="btn-secondary">🔄 Play Again</button>}
-          <button onClick={handleExit} className="btn-secondary">🚪 Exit Arena</button>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <button className="btn-primary text-xs sm:text-sm" style={{ background:'var(--accent)' }}>Current</button>
+          {player?.isHost && <button onClick={handlePlayAgain} className="btn-secondary text-xs sm:text-sm">🔄<span className="hidden sm:inline"> Play Again</span></button>}
+          <button onClick={handleExit} className="btn-secondary text-xs sm:text-sm">🚪<span className="hidden sm:inline"> Exit Arena</span></button>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 px-6 py-5 overflow-auto">
+      <div className="flex-1 px-3 sm:px-6 py-4 sm:py-5 overflow-auto">
 
         {/* Top 3 horizontal badges */}
         {top3.length>0 && (
-          <div className="flex gap-3 mb-5">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4 sm:mb-5">
             {top3.map((p, i) => {
               const cfg = RANK_CFG[i+1];
               const isMe = p.id===player?.id;
@@ -128,19 +128,19 @@ export default function ResultPage() {
         )}
 
         {/* Table */}
-        <div className="rounded-xl overflow-hidden" style={{ border:'1px solid var(--border)' }}>
-          <table className="w-full">
+        <div className="rounded-xl overflow-hidden overflow-x-auto" style={{ border:'1px solid var(--border)' }}>
+          <table className="w-full min-w-[480px]">
             <thead>
               <tr style={{ background:'var(--surface)', borderBottom:'1px solid var(--border)' }}>
                 {[
-                  { key:null,    label:'#',               align:'left',  w:56  },
-                  { key:'name',  label:'Participant',      align:'left',  w:null },
-                  { key:'score', label:'Submission Time',  align:'left',  w:160 },
-                  { key:'date',  label:'Date',             align:'left',  w:100 },
-                  { key:'score', label:'Score',            align:'right', w:80  },
-                ].map(({ key,label,align,w },ci)=>(
+                  { key:null,    label:'#',              align:'left',  w:56,  hide:false },
+                  { key:'name',  label:'Participant',    align:'left',  w:null, hide:false },
+                  { key:'score', label:'Time',           align:'left',  w:120, hide:true  },
+                  { key:'date',  label:'Date',           align:'left',  w:90,  hide:true  },
+                  { key:'score', label:'Score',          align:'right', w:70,  hide:false },
+                ].map(({ key,label,align,w,hide },ci)=>(
                   <th key={ci} onClick={()=>key&&handleSort(key)}
-                    className="py-3 px-4 text-xs font-semibold tracking-wide"
+                    className={`py-3 px-3 sm:px-4 text-xs font-semibold tracking-wide ${hide ? 'hidden sm:table-cell' : ''}`}
                     style={{ textAlign:align, width:w||undefined, color:'var(--text-muted)', cursor:key?'pointer':'default', userSelect:'none', whiteSpace:'nowrap' }}>
                     {label}{key&&<SortIcon col={key} sortBy={sortBy} dir={sortDir} />}
                   </th>
@@ -154,26 +154,26 @@ export default function ResultPage() {
                 return (
                   <motion.tr key={p.id} initial={{ opacity:0, x:-8 }} animate={{ opacity:1, x:0 }} transition={{ delay:0.05+i*0.04 }}
                     style={{ borderBottom:'1px solid var(--border-2)', background:isMe?'rgba(239,68,68,0.04)':i%2===0?'transparent':'rgba(255,255,255,0.01)' }}>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-3 sm:px-4">
                       <div className="w-6"><RankDot rank={origRank} /></div>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-3 sm:px-4">
                       <div className="flex items-center gap-2">
                         <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
-                          className="shrink-0" style={{ color:'var(--text-dim)' }}>
+                          className="shrink-0 hidden sm:block" style={{ color:'var(--text-dim)' }}>
                           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                         </svg>
-                        <span className="text-sm font-medium" style={{ color:isMe?'var(--gold)':'var(--text)' }}>
+                        <span className="text-xs sm:text-sm font-medium" style={{ color:isMe?'var(--gold)':'var(--text)' }}>
                           {anonymousMode?`Player ${origRank}`:p.name}
                         </span>
                         {isMe&&<span className="badge-pink" style={{ fontSize:9 }}>YOU</span>}
                       </div>
                     </td>
-                    <td className="py-3 px-4 font-mono text-sm" style={{ color:isMe?'var(--gold)':'var(--text-muted)' }}>
+                    <td className="py-3 px-3 sm:px-4 font-mono text-xs sm:text-sm hidden sm:table-cell" style={{ color:isMe?'var(--gold)':'var(--text-muted)' }}>
                       {fmtTime(p.timeTaken||p.submissionTime)}
                     </td>
-                    <td className="py-3 px-4 font-mono text-sm" style={{ color:isMe?'var(--gold)':'var(--text-dim)' }}>{today}</td>
-                    <td className="py-3 px-4 text-right font-bold text-sm" style={{ color:isMe?'var(--gold)':'var(--text)' }}>
+                    <td className="py-3 px-3 sm:px-4 font-mono text-xs hidden sm:table-cell" style={{ color:isMe?'var(--gold)':'var(--text-dim)' }}>{today}</td>
+                    <td className="py-3 px-3 sm:px-4 text-right font-bold text-xs sm:text-sm" style={{ color:isMe?'var(--gold)':'var(--text)' }}>
                       {p.score||0}
                     </td>
                   </motion.tr>
