@@ -79,4 +79,77 @@ async function getAllRooms() {
   return Array.from(memoryStore.values());
 }
 
-module.exports = { initFirebase, createRoom, getRoom, updateRoom, deleteRoom, getAllRooms };
+// ─── User Profile / Battle History ───────────────────────────────────────────
+
+/**
+ * Save a single battle result for a user after a game ends.
+ * uid        – Firebase Auth UID of the player
+ * battleData – { roomId, rank, totalPlayers, score, status, problemTitle, language, timeTaken, date }
+ */
+async function saveUserBattle(uid, battleData) {
+  if (!db || !uid) return; // Skip in memory-only mode or for anon players
+  try {
+    const userRef   = db.collection('users').doc(uid);
+    const battleRef = userRef.collection('battles').doc();
+
+    // Write individual battle record
+    await battleRef.set({
+      ...battleData,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Update aggregate stats atomically
+    const isWin = battleData.rank === 1;
+    const dateKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    await userRef.set({
+      stats: {
+        totalBattles:  admin.firestore.FieldValue.increment(1),
+        wins:          admin.firestore.FieldValue.increment(isWin ? 1 : 0),
+        totalScore:    admin.firestore.FieldValue.increment(battleData.score || 0),
+        lastPlayed:    dateKey,
+      },
+      [`activity.${dateKey}`]: admin.firestore.FieldValue.increment(1),
+    }, { merge: true });
+
+    console.log(`📊 Battle saved for user ${uid}`);
+  } catch (err) {
+    console.error('saveUserBattle error:', err.message);
+  }
+}
+
+/**
+ * Get a user's profile: stats + recent battles + activity heatmap.
+ */
+async function getUserProfile(uid) {
+  if (!db || !uid) return null;
+  const userRef = db.collection('users').doc(uid);
+  const [docSnap, battlesSnap] = await Promise.all([
+    userRef.get(),
+    userRef.collection('battles').orderBy('createdAt', 'desc').limit(20).get(),
+  ]);
+
+  const data    = docSnap.exists ? docSnap.data() : {};
+  const stats   = data.stats   || {};
+  const activity = data.activity || {};
+
+  const battles = battlesSnap.docs.map((d) => {
+    const b = d.data();
+    return {
+      id:           d.id,
+      roomId:       b.roomId,
+      rank:         b.rank,
+      totalPlayers: b.totalPlayers,
+      score:        b.score,
+      status:       b.status,
+      problemTitle: b.problemTitle,
+      language:     b.language,
+      timeTaken:    b.timeTaken,
+      date:         b.date,
+    };
+  });
+
+  return { stats, activity, battles };
+}
+
+module.exports = { initFirebase, createRoom, getRoom, updateRoom, deleteRoom, getAllRooms, saveUserBattle, getUserProfile };

@@ -8,6 +8,7 @@ import BattlePage     from './pages/BattlePage';
 import ResultPage     from './pages/ResultPage';
 import AdminPage      from './pages/AdminPage';
 import AuthPage       from './pages/AuthPage';
+import ProfilePage    from './pages/ProfilePage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function AppInner() {
@@ -46,6 +47,9 @@ function AppInner() {
         {/* Protected (requires verified Firebase account) */}
         <Route path="/" element={
           <ProtectedRoute><LandingPage /></ProtectedRoute>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute><ProfilePage /></ProtectedRoute>
         } />
         <Route path="/lobby/:roomId" element={
           <ProtectedRoute><LobbyPage /></ProtectedRoute>

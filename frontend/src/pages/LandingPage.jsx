@@ -38,18 +38,22 @@ export function TopNav({ right }) {
       {/* User chip */}
       {user && (
         <div className="flex items-center gap-2 ml-2">
-          {/* Avatar */}
-          <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center text-xs font-bold"
-            style={{ background: avatarUrl ? 'transparent' : 'var(--accent)', color:'#fff', border:'1px solid var(--border)' }}>
-            {avatarUrl
-              ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-              : initials}
-          </div>
-          {/* Name */}
-          <span className="text-xs font-medium hidden sm:block truncate max-w-[120px]"
-            style={{ color:'var(--text-muted)' }}>
-            {user.displayName || user.email?.split('@')[0]}
-          </span>
+          {/* Avatar — click to go to profile */}
+          <button onClick={() => navigate('/profile')}
+            className="flex items-center gap-2 rounded-lg px-2 py-1 transition-all"
+            style={{ background:'transparent', border:'none', cursor:'pointer' }}
+            title="View profile">
+            <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center text-xs font-bold"
+              style={{ background: avatarUrl ? 'transparent' : 'var(--accent)', color:'#fff', border:'1px solid var(--border)' }}>
+              {avatarUrl
+                ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                : initials}
+            </div>
+            <span className="text-xs font-medium hidden sm:block truncate max-w-[100px]"
+              style={{ color:'var(--text-muted)' }}>
+              {user.displayName || user.email?.split('@')[0]}
+            </span>
+          </button>
           {/* Logout */}
           <button onClick={handleLogout}
             className="btn-ghost text-xs px-2 py-1"
@@ -104,6 +108,7 @@ export default function LandingPage() {
 
   const handleConnect = () => {
     const name = playerName.trim();
+    const uid  = user?.uid || null;
     if (!name) return toast.error('Enter your name!');
     if (name.length > 20) return toast.error('Name too long (max 20 chars)');
     if (mode === 'join' || mode === 'spectate') {
@@ -113,11 +118,11 @@ export default function LandingPage() {
     setIsConnecting(true);
     const doEmit = () => {
       if (mode === 'create') {
-        socket.emit('createRoom', { playerName: name, isPrivate: false, difficulty: difficulty || null });
+        socket.emit('createRoom', { playerName: name, isPrivate: false, difficulty: difficulty || null, uid });
       } else if (mode === 'spectate') {
-        socket.emit('joinRoom', { roomId: roomId.trim().toUpperCase(), playerName: name, spectate: true });
+        socket.emit('joinRoom', { roomId: roomId.trim().toUpperCase(), playerName: name, spectate: true, uid });
       } else {
-        socket.emit('joinRoom', { roomId: roomId.trim().toUpperCase(), playerName: name });
+        socket.emit('joinRoom', { roomId: roomId.trim().toUpperCase(), playerName: name, uid });
       }
     };
     if (socket.connected) { doEmit(); }

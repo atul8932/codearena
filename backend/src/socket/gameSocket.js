@@ -1,5 +1,5 @@
 const { nanoid } = require('nanoid');
-const { createRoom, getRoom, updateRoom, deleteRoom } = require('../services/firebase');
+const { createRoom, getRoom, updateRoom, deleteRoom, saveUserBattle } = require('../services/firebase');
 const { runTestCases } = require('../services/judge0');
 const { getRandomProblem } = require('../data/problems');
 
@@ -63,19 +63,20 @@ function initGameSocket(io) {
     console.log(`🔌 Client connected: ${socket.id}`);
 
     // ── CREATE ROOM ────────────────────────────────────────────────────────
-    socket.on('createRoom', async ({ playerName, isPrivate = false, difficulty = null }) => {
+    socket.on('createRoom', async ({ playerName, isPrivate = false, difficulty = null, uid = null }) => {
       try {
         const roomId = nanoid(8).toUpperCase();
         const player = {
           id: socket.id,
           name: playerName || `Player_${socket.id.slice(0, 4)}`,
+          uid: uid || null, // Firebase Auth UID for profile tracking
           isHost: true,
           isReady: false,
           score: 0,
-          status: 'waiting', // waiting | coding | solved | failed
+          status: 'waiting',
           solvedAt: null,
           attempts: 0,
-          progress: 0,        // 0–100%
+          progress: 0,
           isTyping: false,
         };
 
@@ -107,7 +108,7 @@ function initGameSocket(io) {
     });
 
     // ── JOIN ROOM ──────────────────────────────────────────────────────────
-    socket.on('joinRoom', async ({ roomId, playerName, spectate = false }) => {
+    socket.on('joinRoom', async ({ roomId, playerName, spectate = false, uid = null }) => {
       try {
         const room = await getRoom(roomId);
         if (!room) return socket.emit('error', { message: 'Room not found' });
@@ -123,6 +124,7 @@ function initGameSocket(io) {
         const player = {
           id: socket.id,
           name: playerName || `Player_${socket.id.slice(0, 4)}`,
+          uid: uid || null,
           isHost: false,
           isReady: false,
           isSpectator: spectate,
@@ -366,8 +368,19 @@ function initGameSocket(io) {
 
         socket.emit('runQueued', { message: 'Running sample test cases...' });
 
-        const { results } = await runTestCases(sanitized, language, sampleCases);
-        socket.emit('runResult', { results });
+        const { passed, total, results } = await runTestCases(sanitized, language, sampleCases);
+        socket.emit('runResult', {
+          accepted: passed === total && total > 0,
+          passed,
+          total,
+          results: results.map((r) => ({
+            input: r.input,
+            expectedOutput: r.expectedOutput,
+            actualOutput: r.actualOutput,
+            accepted: r.accepted,
+            time: r.time,
+          })),
+        });
       } catch (err) {
         console.error('runCode error:', err);
         socket.emit('runResult', { error: 'Run failed' });
@@ -574,6 +587,28 @@ async function endGame(io, roomId) {
 
     const leaderboard = buildLeaderboard(room.players);
     const winner = leaderboard[0];
+    const activePlayers = leaderboard.filter(p => !p.isSpectator);
+    const totalPlayers = activePlayers.length;
+    const dateKey = new Date().toISOString().slice(0, 10);
+
+    // ── Save each player's battle record to Firestore ──
+    const startTime = room.startTime || Date.now();
+    for (const p of leaderboard) {
+      if (p.uid) {
+        const timeTaken = p.solvedAt ? Math.floor((p.solvedAt - startTime) / 1000) : null;
+        saveUserBattle(p.uid, {
+          roomId,
+          rank:         p.rank,
+          totalPlayers,
+          score:        p.score || 0,
+          status:       p.status || 'coding',
+          problemTitle: room.problem?.title || 'Unknown',
+          language:     p.language || 'unknown',
+          timeTaken,
+          date:         dateKey,
+        }).catch(console.error);
+      }
+    }
 
     io.to(roomId).emit('gameEnded', {
       leaderboard,
