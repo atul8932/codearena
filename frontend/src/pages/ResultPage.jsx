@@ -80,13 +80,13 @@ export default function ResultPage() {
       {/* Sub-header */}
       <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom:'1px solid var(--border)' }}>
         <div>
-          <h1 className="text-lg sm:text-xl font-bold" style={{ color:'var(--text)' }}>Leaderboard</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-glow-subtle" style={{ color:'var(--text)' }}>Leaderboard</h1>
           <p className="text-xs mt-0.5" style={{ color:'var(--accent)' }}>
             {isWinner ? '🏆 Victory! You dominated the arena!' : winner ? `${anonymousMode?'???':winner.name} takes the crown` : "Time's Up!"}
           </p>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <button className="btn-primary text-xs sm:text-sm" style={{ background:'var(--accent)' }}>Current</button>
+          <button onClick={() => navigate('/leaderboard')} className="btn-secondary text-xs sm:text-sm">🏆<span className="hidden sm:inline"> Global</span></button>
           {player?.isHost && <button onClick={handlePlayAgain} className="btn-secondary text-xs sm:text-sm">🔄<span className="hidden sm:inline"> Play Again</span></button>}
           <button onClick={handleExit} className="btn-secondary text-xs sm:text-sm">🚪<span className="hidden sm:inline"> Exit Arena</span></button>
         </div>
@@ -190,7 +190,7 @@ export default function ResultPage() {
                   </tr>
                   <motion.tr initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.5 }}
                     style={{ background:'rgba(239,68,68,0.06)', borderTop:'1px solid rgba(239,68,68,0.12)' }}>
-                    <td className="py-3 px-4 font-bold text-sm" style={{ color:'var(--accent)' }}>{myRank}</td>
+                    <td className="py-3 px-4 font-bold text-sm text-glow-green" style={{ color:'var(--accent)' }}>{myRank}</td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
@@ -204,7 +204,7 @@ export default function ResultPage() {
                     </td>
                     <td className="py-3 px-4 font-mono text-sm" style={{ color:'var(--accent)' }}>{fmtTime(myEntry.timeTaken||myEntry.submissionTime)}</td>
                     <td className="py-3 px-4 font-mono text-sm" style={{ color:'var(--accent)' }}>{today}</td>
-                    <td className="py-3 px-4 text-right font-bold text-sm" style={{ color:'var(--accent)' }}>{myEntry.score||0}</td>
+                    <td className="py-3 px-4 text-right font-bold text-sm text-glow-green" style={{ color:'var(--accent)' }}>{myEntry.score||0}</td>
                   </motion.tr>
                 </>
               )}

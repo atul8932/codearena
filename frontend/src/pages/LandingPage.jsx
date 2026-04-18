@@ -33,8 +33,8 @@ export function TopNav({ right }) {
       >
         <div className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold"
           style={{ background: 'var(--accent)', color: '#fff' }}>⚡</div>
-        <span className="text-sm font-bold tracking-wide" style={{ color: 'var(--text)', letterSpacing: '-0.01em' }}>
-          CODE<span style={{ color: 'var(--accent)' }}>ARENA</span>
+        <span className="text-sm font-bold tracking-wide text-glow-subtle" style={{ color: 'var(--text)', letterSpacing: '-0.01em' }}>
+          CODE<span className="text-glow-green" style={{ color: 'var(--accent)' }}>ARENA</span>
         </span>
       </button>
 
@@ -82,6 +82,22 @@ export function TopNav({ right }) {
               </div>
             )}
           </div>
+          {/* Practice */}
+          <button onClick={() => navigate('/practice')}
+            className="btn-ghost text-xs px-2 py-1"
+            title="Practice Mode">
+            <span className="hidden sm:inline">🧪 Practice</span>
+            <span className="sm:hidden">🧪</span>
+          </button>
+
+          {/* Leaderboard */}
+          <button onClick={() => navigate('/leaderboard')}
+            className="btn-ghost text-xs px-2 py-1"
+            title="Global Leaderboard">
+            <span className="hidden sm:inline">🏆 Leaderboard</span>
+            <span className="sm:hidden">🏆</span>
+          </button>
+          
           {/* Avatar — click to go to profile */}
           <button onClick={() => navigate('/profile')}
             className="flex items-center gap-2 rounded-lg px-2 py-1 transition-all"
@@ -114,7 +130,7 @@ export function TopNav({ right }) {
 // ─── Page wrapper ────────────────────────────────────────────────────────────
 export function PageShell({ children, nav }) {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
+    <div className="min-h-screen flex flex-col">
       {nav}
       {children}
     </div>
@@ -123,12 +139,14 @@ export function PageShell({ children, nav }) {
 
 // ─── Features ────────────────────────────────────────────────────────────────
 const features = [
-  { icon: '⚔️', title: 'Real-Time Battles', desc: 'Compete simultaneously. Every millisecond counts.' },
-  { icon: '🔥', title: 'Power-Ups', desc: 'Freeze opponents, reveal hints, or double your score.' },
-  { icon: '🎯', title: 'Live Scoreboard', desc: 'Watch rankings shift live with every submission.' },
-  { icon: '🤖', title: 'AI Commentary', desc: 'Dynamic AI reacts to every move and milestone.' },
-  { icon: '🏆', title: 'First Blood', desc: 'First correct submission earns the crown.' },
-  { icon: '👁️', title: 'Spectator Mode', desc: 'Watch live battles without playing.' },
+  { icon: '⚔️', title: 'Real-Time Battles',  desc: 'Compete simultaneously. Every millisecond counts.' },
+  { icon: '🔥', title: 'Power-Ups',           desc: 'Freeze opponents, reveal hints, or double your score.' },
+  { icon: '🎯', title: 'Live Scoreboard',     desc: 'Watch rankings shift live with every submission.' },
+  { icon: '🤖', title: 'AI Commentary',       desc: 'Dynamic AI reacts to every move and milestone.' },
+  { icon: '🏆', title: 'First Blood',         desc: 'First correct submission earns the crown.' },
+  { icon: '👁️', title: 'Spectator Mode',      desc: 'Watch live battles without playing.' },
+  { icon: '🧪', title: 'Practice Mode',       desc: 'Sharpen skills with edge-case testing & Judge0 execution.', href: '/practice' },
+  { icon: '🏅', title: 'Global Leaderboard',  desc: 'Climb the ranks. Season 1 is live.', href: '/leaderboard' },
 ];
 
 // ─── DecryptedText Component ───────────────────────────────────────────────────
@@ -278,19 +296,19 @@ export default function LandingPage() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-display tracking-tight drop-shadow-lg"
               style={{
-                backgroundImage: 'linear-gradient(to right, var(--neon-blue), var(--neon-purple), var(--neon-pink))',
+                backgroundImage: 'linear-gradient(to right, var(--accent), var(--blue), var(--purple))',
                 WebkitBackgroundClip: 'text',
-                // WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
               }}>
-              <text>Welcome to CodeArena</text>
+              Welcome to CodeArena
             </h1>
-            <p className="text-xs sm:text-sm mt-1 font-cyber tracking-widest uppercase flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
-              <span className="w-2 h-2 rounded-full animate-pulse bg-neon-pink shadow-[0_0_8px_var(--neon-pink)] shrink-0"></span>
-              <text >Real-Time Multiplayer Coding Battles</text>
+            <p className="text-xs sm:text-sm mt-1 font-cyber tracking-widest uppercase flex items-center gap-2" style={{ color: 'var(--accent)' }}>
+              <span className="w-2 h-2 rounded-full animate-pulse shrink-0" style={{ background: 'var(--accent)', boxShadow: '0 0 8px var(--accent)' }}></span>
+              <span>Real-Time Multiplayer Coding Battles</span>
             </p>
           </div>
-          <div className="status-online text-xs">ARENA ONLINE</div>
+          <div className="status-online text-xs text-glow-green">ARENA ONLINE</div>
         </div>
 
         {/* ── Main content ── */}
@@ -301,12 +319,17 @@ export default function LandingPage() {
 
                 {/* Hero */}
                 <div className="text-center py-8 sm:py-12">
-                  <h2 className="text-2xl sm:text-4xl font-bold mb-3" style={{ color: 'var(--text)' }}>
+                  {/* Season badge */}
+                  <div className="flex justify-center mb-5">
+                    <span className="season-badge">SEASON 1 — NOW LIVE</span>
+                  </div>
+
+                  <h2 className="text-2xl sm:text-4xl font-bold mb-3 text-glow-subtle" style={{ color: 'var(--text)' }}>
                     Enter the Arena.{' '}
-                    <span style={{ color: 'var(--accent)' }}><DecryptedText text="Code to Win." /></span>
+                    <span className="text-glow-green" style={{ color: 'var(--accent)' }}><DecryptedText text="Code to Win." /></span>
                   </h2>
                   <p className="text-sm sm:text-base mb-6 sm:mb-8 max-w-lg mx-auto px-4" style={{ color: 'var(--text-muted)' }}>
-                    Solve problems faster than your opponents in real-time coding battles.
+                    Solve problems faster than your opponents in real-time coding battles. Every millisecond counts.
                   </p>
                   <div className="flex flex-col sm:flex-wrap sm:flex-row gap-2 sm:gap-3 justify-center mb-8 sm:mb-10 px-4 sm:px-0">
                     <button id="btn-create-room" onClick={() => setMode('create')} className="btn-primary py-3 sm:py-2.5 text-sm w-full sm:w-auto sm:px-8">
@@ -316,16 +339,21 @@ export default function LandingPage() {
                       🎮 Join Room
                     </button>
                     <button id="btn-spectate" onClick={() => setMode('spectate')} className="btn-ghost py-3 sm:py-2.5 text-sm w-full sm:w-auto sm:px-8">
-                      👁️ Watch as Spectator
+                      👁️ Spectate
                     </button>
                   </div>
 
                   {/* Stats */}
                   <div className="flex justify-center gap-6 sm:gap-12 mb-8 sm:mb-12 flex-wrap">
-                    {[['2.4K+', 'Active Players'], ['18K+', 'Battles Fought'], ['200+', 'Problems'], ['4', 'Languages']].map(([v, l]) => (
+                    {[
+                      { v: '2.4K+', l: 'Active Players',  c: 'var(--accent)' },
+                      { v: '18K+', l: 'Battles Fought',   c: 'var(--blue)' },
+                      { v: '200+', l: 'Problems',          c: 'var(--bronze)' },
+                      { v: '4',    l: 'Languages',         c: 'var(--purple)' },
+                    ].map(({ v, l, c }) => (
                       <div key={l} className="text-center">
-                        <div className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text)' }}>{v}</div>
-                        <div className="text-xs mt-0.5" style={{ color: 'var(--text-dim)' }}>{l}</div>
+                        <div className="text-xl sm:text-2xl font-bold text-glow-subtle" style={{ color: c }}>{v}</div>
+                        <div className="text-xs mt-0.5 uppercase tracking-widest" style={{ color: 'var(--text-dim)' }}>{l}</div>
                       </div>
                     ))}
                   </div>
@@ -371,13 +399,26 @@ export default function LandingPage() {
                     Why CodeArena
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {features.map((f) => (
-                      <div key={f.title} className="card-hover p-4">
-                        <div className="text-xl mb-2">{f.icon}</div>
-                        <div className="text-sm font-semibold mb-1" style={{ color: 'var(--text)' }}>{f.title}</div>
-                        <div className="text-xs leading-relaxed" style={{ color: 'var(--text-dim)' }}>{f.desc}</div>
-                      </div>
-                    ))}
+                    {features.map((f) => {
+                      const isLink = !!f.href;
+                      return (
+                        <div key={f.title}
+                          onClick={() => isLink && navigate(f.href)}
+                          className="card-hover p-4"
+                          style={{
+                            borderRadius: 12,
+                            cursor: isLink ? 'pointer' : 'default',
+                            border: isLink ? '1px solid rgba(0,230,118,0.15)' : undefined,
+                          }}>
+                          <div className="text-xl mb-3">{f.icon}</div>
+                          <div className="text-sm font-semibold mb-1 flex items-center gap-1.5" style={{ color: 'var(--text)' }}>
+                            {f.title}
+                            {isLink && <span className="text-[10px] px-1.5 py-0.5 rounded font-bold" style={{ background: 'rgba(0,230,118,0.1)', color: 'var(--accent)', border: '1px solid rgba(0,230,118,0.2)' }}>→</span>}
+                          </div>
+                          <div className="text-xs leading-relaxed" style={{ color: 'var(--text-dim)' }}>{f.desc}</div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </motion.div>

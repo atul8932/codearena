@@ -29,10 +29,10 @@ export default function VotingOverlay() {
           <div className="inline-block px-3 py-1 rounded-full text-[10px] font-bold tracking-[0.2em] mb-4 border border-neon-blue/30 text-neon-blue bg-neon-blue/5">
             SELECTION PHASE
           </div>
-          <h2 className="text-4xl font-bold mb-4 font-display">VOTE FOR PROBLEM</h2>
+          <h2 className="text-4xl font-bold mb-4 font-display text-glow-subtle" style={{ color: 'var(--text)' }}>VOTE FOR PROBLEM</h2>
           <div className="flex items-center justify-center gap-4">
             <div className="text-sm font-mono text-slate-400">DECISION DEADLINE:</div>
-            <div className="text-3xl font-black font-mono text-neon-pink w-16">
+            <div className="text-3xl font-black font-mono text-glow-green w-16" style={{ color: 'var(--accent)' }}>
               {String(votingTimeLeft).padStart(2, '0')}s
             </div>
           </div>

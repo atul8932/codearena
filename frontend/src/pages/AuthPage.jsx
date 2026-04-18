@@ -32,7 +32,7 @@ function Particles() {
       {pts.map(p => (
         <motion.div key={p.id}
           className="absolute rounded-full"
-          style={{ left:`${p.x}%`, top:`${p.y}%`, width:p.size, height:p.size, background:'rgba(239,68,68,0.25)' }}
+          style={{ left:`${p.x}%`, top:`${p.y}%`, width:p.size, height:p.size, background:'rgba(0,230,118,0.2)' }}
           animate={{ y:[-20,20,-20], opacity:[0.2,0.6,0.2] }}
           transition={{ duration:p.dur, delay:p.delay, repeat:Infinity, ease:'easeInOut' }}
         />
@@ -199,7 +199,7 @@ function ForgotScreen({ onReset, onBack }) {
           onChange={e => setEmail(e.target.value)} placeholder="you@example.com" autoFocus />
         <motion.button type="submit" disabled={loading} whileHover={{ scale:1.01 }} whileTap={{ scale:0.98 }}
           className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50"
-          style={{ background:'linear-gradient(135deg,#ef4444,#f97316)', color:'#fff' }}>
+          style={{ background:'linear-gradient(135deg, var(--accent), var(--blue))', color:'#000' }}>
           {loading ? '⏳ Sending...' : '📨 Send reset email'}
         </motion.button>
       </form>
@@ -273,7 +273,7 @@ export default function AuthPage() {
 
             {/* Header */}
             <div className="mb-6">
-              <h1 className="text-2xl font-bold tracking-tight" style={{ color:'var(--text)' }}>
+              <h1 className="text-2xl font-bold tracking-tight text-glow-subtle" style={{ color:'var(--text)' }}>
                 {tab === 'signin' ? 'Welcome back' : 'Create account'}
               </h1>
               <p className="text-sm mt-1" style={{ color:'var(--text-dim)' }}>
@@ -287,7 +287,7 @@ export default function AuthPage() {
                 <button key={t} onClick={() => switchTab(t)}
                   className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all duration-200"
                   style={tab===t
-                    ? { background:'var(--accent)', color:'#fff', boxShadow:'0 2px 8px rgba(239,68,68,0.3)' }
+                    ? { background:'var(--accent)', color:'#000', boxShadow:'0 2px 12px rgba(0,230,118,0.3)' }
                     : { color:'var(--text-dim)', background:'transparent' }}>
                   {t === 'signin' ? 'Sign In' : 'Sign Up'}
                 </button>
@@ -336,7 +336,7 @@ export default function AuthPage() {
               <motion.button type="submit" disabled={loading || gLoading}
                 whileHover={{ scale:1.01 }} whileTap={{ scale:0.98 }}
                 className="w-full py-3.5 rounded-xl text-sm font-bold tracking-wide disabled:opacity-50 mt-2"
-                style={{ background:'linear-gradient(135deg,#ef4444,#f97316)', color:'#fff', boxShadow:'0 4px 20px rgba(239,68,68,0.25)' }}>
+                style={{ background:'linear-gradient(135deg, var(--accent), var(--blue))', color:'#000', boxShadow:'0 4px 20px rgba(0,230,118,0.3)' }}>
                 {loading
                   ? <span className="flex items-center justify-center gap-2">
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" style={{ animation:'spin 0.8s linear infinite' }} />
@@ -358,25 +358,25 @@ function Shell({ children }) {
     <div className="min-h-screen flex" style={{ background:'var(--bg)' }}>
       {/* Left panel — branding */}
       <div className="hidden lg:flex flex-col justify-between w-[480px] shrink-0 relative overflow-hidden p-10"
-        style={{ background:'linear-gradient(160deg,#1a0a0a 0%,#0f0f0f 50%,#110808 100%)', borderRight:'1px solid rgba(239,68,68,0.08)' }}>
+        style={{ background:'linear-gradient(160deg,#050f07 0%,#090f09 50%,#060f07 100%)', borderRight:'1px solid rgba(0,230,118,0.1)' }}>
         <Particles />
         {/* Top glow */}
         <div className="absolute top-0 left-0 right-0 h-1"
-          style={{ background:'linear-gradient(90deg,transparent,#ef4444,transparent)' }} />
+          style={{ background:'linear-gradient(90deg,transparent,var(--accent),transparent)' }} />
 
         {/* Brand */}
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-16">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-base"
-              style={{ background:'linear-gradient(135deg,#ef4444,#f97316)', color:'#fff', boxShadow:'0 4px 16px rgba(239,68,68,0.4)' }}>⚡</div>
-            <span className="text-base font-bold tracking-wide" style={{ color:'var(--text)' }}>
-              CODE<span style={{ color:'var(--accent)' }}>ARENA</span>
+              style={{ background:'var(--accent)', color:'#000', boxShadow:'0 4px 16px rgba(0,230,118,0.4)' }}>⚡</div>
+            <span className="text-base font-bold tracking-wide text-glow-subtle" style={{ color:'var(--text)' }}>
+              CODE<span className="text-glow-green" style={{ color:'var(--accent)' }}>ARENA</span>
             </span>
           </div>
 
-          <h2 className="text-4xl font-bold leading-tight mb-4" style={{ color:'var(--text)' }}>
+          <h2 className="text-4xl font-bold leading-tight mb-4 text-glow-subtle" style={{ color:'var(--text)' }}>
             Code Faster.<br />
-            <span style={{ background:'linear-gradient(90deg,#ef4444,#f97316)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>
+            <span style={{ background:'linear-gradient(90deg, var(--accent), var(--blue))', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>
               Win Harder.
             </span>
           </h2>
@@ -395,7 +395,7 @@ function Shell({ children }) {
           ].map(f => (
             <div key={f.label} className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-sm"
-                style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.12)' }}>{f.icon}</div>
+                style={{ background:'rgba(0,230,118,0.07)', border:'1px solid rgba(0,230,118,0.15)' }}>{f.icon}</div>
               <div>
                 <div className="text-sm font-semibold" style={{ color:'var(--text)' }}>{f.label}</div>
                 <div className="text-xs" style={{ color:'var(--text-dim)' }}>{f.desc}</div>
@@ -408,7 +408,7 @@ function Shell({ children }) {
         <div className="relative z-10 flex gap-6">
           {[['2.4K+','Players'],['18K+','Battles'],['200+','Problems']].map(([v,l]) => (
             <div key={l}>
-              <div className="text-xl font-bold" style={{ color:'var(--text)' }}>{v}</div>
+              <div className="text-xl font-bold text-glow-subtle" style={{ color:'var(--accent)' }}>{v}</div>
               <div className="text-xs" style={{ color:'var(--text-dim)' }}>{l}</div>
             </div>
           ))}
@@ -416,7 +416,7 @@ function Shell({ children }) {
 
         {/* Bottom decorative line */}
         <div className="absolute bottom-0 left-0 right-0 h-px"
-          style={{ background:'linear-gradient(90deg,transparent,rgba(239,68,68,0.2),transparent)' }} />
+          style={{ background:'linear-gradient(90deg,transparent,rgba(0,230,118,0.2),transparent)' }} />
       </div>
 
       {/* Right panel — form */}
@@ -424,9 +424,9 @@ function Shell({ children }) {
         {/* Mobile brand bar */}
         <div className="lg:hidden flex items-center gap-2 px-6 py-4" style={{ borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
-            style={{ background:'linear-gradient(135deg,#ef4444,#f97316)', color:'#fff' }}>⚡</div>
-          <span className="text-sm font-bold" style={{ color:'var(--text)' }}>
-            CODE<span style={{ color:'var(--accent)' }}>ARENA</span>
+            style={{ background:'var(--accent)', color:'#000' }}>⚡</div>
+          <span className="text-sm font-bold text-glow-subtle" style={{ color:'var(--text)' }}>
+            CODE<span className="text-glow-green" style={{ color:'var(--accent)' }}>ARENA</span>
           </span>
         </div>
 
@@ -443,7 +443,7 @@ function Shell({ children }) {
               }}>
               {/* Top accent line */}
               <div className="absolute top-0 left-8 right-8 h-px"
-                style={{ background:'linear-gradient(90deg,transparent,rgba(239,68,68,0.5),transparent)' }} />
+                style={{ background:'linear-gradient(90deg,transparent,rgba(0,230,118,0.4),transparent)' }} />
               {children}
             </div>
 

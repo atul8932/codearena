@@ -129,7 +129,7 @@ export default function LobbyPage() {
       {/* Sub-header */}
       <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
         <div>
-          <h1 className="text-lg sm:text-xl font-bold" style={{ color: 'var(--text)' }}>Battle Lobby</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-glow-subtle" style={{ color: 'var(--text)' }}>Battle Lobby</h1>
           <p className="text-xs mt-0.5 hidden sm:block" style={{ color: 'var(--text-dim)' }}>Share the Room ID and wait for opponents</p>
         </div>
         <div className="flex items-center gap-2">
@@ -138,12 +138,12 @@ export default function LobbyPage() {
             onClick={handleLeave}
             className="text-xs sm:text-sm px-3 py-1.5 rounded-lg transition-all font-semibold"
             style={{
-              background: 'rgba(239,68,68,0.08)',
-              color: 'var(--accent)',
-              border: '1px solid rgba(239,68,68,0.25)',
+              background: 'rgba(255,23,68,0.08)',
+              color: 'var(--red)',
+              border: '1px solid rgba(255,23,68,0.25)',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.18)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,23,68,0.18)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,23,68,0.08)'; }}
           >
             🚪 Leave
           </button>
@@ -175,7 +175,7 @@ export default function LobbyPage() {
           <div className="card">
             <p className="section-title">🏠 Room ID</p>
             <div className="flex items-center gap-2 mb-2">
-              <div className="flex-1 text-center font-mono font-bold text-xl py-3 rounded-lg"
+              <div className="flex-1 text-center font-mono font-bold text-xl py-3 rounded-lg text-glow-green"
                 style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--accent)', letterSpacing: '0.25em' }}>
                 {roomId}
               </div>

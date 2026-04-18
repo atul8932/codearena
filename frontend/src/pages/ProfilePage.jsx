@@ -218,7 +218,7 @@ export default function ProfilePage() {
       <div className="px-4 sm:px-6 py-4 flex items-center gap-3" style={{ borderBottom:'1px solid var(--border)' }}>
         <button onClick={() => navigate('/')} className="btn-ghost text-xs px-2 py-1">← Home</button>
         <span style={{ color:'var(--border)' }}>|</span>
-        <h1 className="text-base font-bold" style={{ color:'var(--text)' }}>My Profile</h1>
+        <h1 className="text-base font-bold text-glow-subtle" style={{ color:'var(--text)' }}>My Profile</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6 max-w-5xl mx-auto w-full">
@@ -234,7 +234,7 @@ export default function ProfilePage() {
           {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              <h2 className="text-xl font-bold" style={{ color:'var(--text)' }}>
+              <h2 className="text-xl font-bold text-glow-subtle" style={{ color:'var(--text)' }}>
                 {user?.displayName || user?.email?.split('@')[0] || 'Coder'}
               </h2>
               {user?.emailVerified && <span className="badge-green text-xs">✓ Verified</span>}

@@ -2,14 +2,16 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useGame } from './hooks/useGame';
 
-import LandingPage    from './pages/LandingPage';
-import LobbyPage      from './pages/LobbyPage';
-import BattlePage     from './pages/BattlePage';
-import ResultPage     from './pages/ResultPage';
-import AdminPage      from './pages/AdminPage';
-import AuthPage       from './pages/AuthPage';
-import ProfilePage    from './pages/ProfilePage';
-import ProtectedRoute from './components/ProtectedRoute';
+import LandingPage      from './pages/LandingPage';
+import LobbyPage        from './pages/LobbyPage';
+import BattlePage       from './pages/BattlePage';
+import ResultPage       from './pages/ResultPage';
+import AdminPage        from './pages/AdminPage';
+import AuthPage         from './pages/AuthPage';
+import ProfilePage      from './pages/ProfilePage';
+import LeaderboardPage  from './pages/LeaderboardPage';
+import PracticePage     from './pages/PracticePage';
+import ProtectedRoute   from './components/ProtectedRoute';
 
 function AppInner() {
   useGame();
@@ -22,19 +24,19 @@ function AppInner() {
         toastOptions={{
           duration: 4000,
           style: {
-            background: '#1a1a1a',
-            color: '#e5e7eb',
-            border: '1px solid rgba(255,255,255,0.07)',
+            background: 'var(--surface)',
+            color: 'var(--text)',
+            border: '1px solid var(--border)',
             fontFamily: '"Inter", sans-serif',
             fontSize: '13px',
           },
           success: {
-            style: { borderColor: 'rgba(34,197,94,0.3)' },
-            iconTheme: { primary: '#22c55e', secondary: '#1a1a1a' },
+            style: { borderColor: 'rgba(0,230,118,0.3)' },
+            iconTheme: { primary: '#00e676', secondary: 'var(--surface)' },
           },
           error: {
-            style: { borderColor: 'rgba(239,68,68,0.3)' },
-            iconTheme: { primary: '#ef4444', secondary: '#1a1a1a' },
+            style: { borderColor: 'rgba(255,23,68,0.3)' },
+            iconTheme: { primary: '#ff1744', secondary: 'var(--surface)' },
           },
         }}
       />
@@ -43,6 +45,8 @@ function AppInner() {
         {/* Public */}
         <Route path="/auth"  element={<AuthPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
+        <Route path="/practice"    element={<ProtectedRoute><PracticePage /></ProtectedRoute>} />
 
         {/* Protected (requires verified Firebase account) */}
         <Route path="/" element={

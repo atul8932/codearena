@@ -116,6 +116,7 @@ async function saveUserBattle(uid, battleData) {
     const dateKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
     await userRef.set({
+      displayName: battleData.playerName || null,
       stats: {
         totalBattles:  admin.firestore.FieldValue.increment(1),
         wins:          admin.firestore.FieldValue.increment(isWin ? 1 : 0),
@@ -167,4 +168,26 @@ async function getUserProfile(uid) {
   return { stats, activity, battles };
 }
 
-module.exports = { initFirebase, createRoom, getRoom, updateRoom, deleteRoom, getAllRooms, saveUserBattle, getUserProfile, addNotification };
+/**
+ * Get global leaderboard — top players sorted by totalScore.
+ */
+async function getGlobalLeaderboard(limit = 100) {
+  if (!db) return [];
+  try {
+    const snap = await db.collection('users')
+      .orderBy('stats.totalScore', 'desc')
+      .limit(limit)
+      .get();
+    return snap.docs.map((d, i) => ({
+      uid:          d.id,
+      rank:         i + 1,
+      ...( d.data().stats || {} ),
+      displayName:  d.data().displayName || d.data().stats?.displayName || 'Anonymous',
+    }));
+  } catch (err) {
+    console.error('getGlobalLeaderboard error:', err.message);
+    return [];
+  }
+}
+
+module.exports = { initFirebase, createRoom, getRoom, updateRoom, deleteRoom, getAllRooms, saveUserBattle, getUserProfile, addNotification, getGlobalLeaderboard };
