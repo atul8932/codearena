@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Editor from '@monaco-editor/react';
 import ReactMarkdown from 'react-markdown';
 import toast from 'react-hot-toast';
-import socket from '../services/socket';
+import socket, { setVoluntaryLeave } from '../services/socket';
 import useGameStore from '../store/gameStore';
 
 // ─── Anti-Cheat Hook ─────────────────────────────────────────────────────────
@@ -587,7 +587,13 @@ export default function BattlePage() {
               🔄 Switch
             </button>
           )}
-          <button onClick={() => { localStorage.removeItem('codearena_roomId'); socket.emit('leaveRoom', { roomId }); navigate('/'); }}
+          <button onClick={() => {
+              setVoluntaryLeave(true);
+              localStorage.removeItem('codearena_roomId');
+              socket.emit('leaveRoom', { roomId });
+              useGameStore.getState().resetAll();
+              navigate('/');
+            }}
             className="btn-primary !bg-red-500/20 !border-red-500 !text-red-500 hover:!bg-red-500/30 text-xs px-3 py-1">
             <span className="hidden sm:inline">🚪 Exit Battle</span>
             <span className="sm:hidden">🚪 Exit</span>

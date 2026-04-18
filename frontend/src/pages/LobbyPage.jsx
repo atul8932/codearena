@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import socket from '../services/socket';
+import socket, { setVoluntaryLeave } from '../services/socket';
 import useGameStore from '../store/gameStore';
 import { TopNav, PageShell } from './LandingPage';
 import VotingOverlay from './VotingOverlay';
@@ -99,22 +99,14 @@ export default function LobbyPage() {
   const myData = player ? players[player.id] || player : null;
   const isHost = myData?.isHost === true;
 
-  // Listen for host promotion (admin-room: first joiner, or host left)
-  useEffect(() => {
-    const onHostTransferred = ({ message }) => {
-      useGameStore.getState().updatePlayer({ isHost: true });
-      toast.success(message || "You're now the host!", { icon: '👑' });
-    };
-    socket.on('hostTransferred', onHostTransferred);
-    return () => socket.off('hostTransferred', onHostTransferred);
-  }, []);
-
 
   const handleReady  = () => socket.emit('playerReady', { roomId });
   const handleStart  = () => { if (realPlayers.length < 1) return toast.error('Need at least 1 player!'); socket.emit('startGame', { roomId }); };
   const handleCopy   = () => { navigator.clipboard.writeText(roomId); setCopied(true); toast.success('Room ID copied!', { icon: '📋' }); setTimeout(() => setCopied(false), 2000); };
   const handleToggle = () => socket.emit('toggleAnonymous', { roomId });
   const handleLeave  = () => {
+    setVoluntaryLeave(true);          // prevent reconnect ghost-join
+    localStorage.removeItem('codearena_roomId'); // clear persisted room
     socket.emit('leaveRoom', { roomId });
     useGameStore.getState().resetAll();
     navigate('/');

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import socket from '../services/socket';
+import socket, { voluntaryLeave, setVoluntaryLeave } from '../services/socket';
 import useGameStore from '../store/gameStore';
 
 /**
@@ -45,6 +45,11 @@ export function useGame() {
     off('roomCreated', onRoomCreated);
 
     const onRoomJoined = ({ player: p, room: r }) => {
+      // If the user voluntarily left, ignore reconnect-triggered roomJoined events.
+      if (voluntaryLeave) {
+        setVoluntaryLeave(false); // reset for next session
+        return;
+      }
       localStorage.setItem('codearena_roomId', r.id);
       setPlayer(p);
       setRoom(r);
@@ -53,6 +58,13 @@ export function useGame() {
       navigate(`/lobby/${r.id}`);
     };
     off('roomJoined', onRoomJoined);
+
+    // Reset voluntaryLeave flag on clean reconnect (network hiccup recovery)
+    const onReconnect = () => {
+      // Only allow re-entry if the user didn't explicitly leave
+      if (voluntaryLeave) setVoluntaryLeave(false);
+    };
+    socket.on('reconnect', onReconnect);
 
     const onPlayerJoined = ({ players }) => setPlayers(players);
     off('playerJoined', onPlayerJoined);
@@ -270,12 +282,16 @@ export function useGame() {
     return () => {
       socket.off('roomCreated', onRoomCreated);
       socket.off('roomJoined', onRoomJoined);
+      socket.off('reconnect', onReconnect);
       socket.off('playerJoined', onPlayerJoined);
       socket.off('playerLeft', onPlayerLeft);
       socket.off('playersUpdate', onPlayersUpdate);
       socket.off('hostTransferred', onHostTransferred);
       socket.off('settingsUpdate', onSettingsUpdate);
       socket.off('roomReset', onRoomReset);
+      socket.off('gameVoting', onGameVoting);
+      socket.off('votingTick', onVotingTick);
+      socket.off('votesUpdate', onVotesUpdate);
       socket.off('gameCountdown', onGameCountdown);
       socket.off('countdownTick', onCountdownTick);
       socket.off('gameStarted', onGameStarted);
@@ -286,12 +302,15 @@ export function useGame() {
       socket.off('runQueued', onRunQueued);
       socket.off('runResult', onRunResult);
       socket.off('leaderboardUpdate', onLeaderboardUpdate);
+      socket.off('cursorUpdate', onCursorUpdate);
+      socket.off('problemSwitched', onProblemSwitched);
       socket.off('firstBlood', onFirstBlood);
       socket.off('playerWarned', onPlayerWarned);
       socket.off('playerDisqualified', onPlayerDisqualified);
       socket.off('playerTyping', onPlayerTyping);
       socket.off('progressUpdate', onProgressUpdate);
       socket.off('commentary', onCommentary);
+      socket.off('chatMessage', onChatMessage);
       socket.off('powerUpEffect', onPowerUpEffect);
       socket.off('powerUpUsed', onPowerUpUsed);
       socket.off('gameEnded', onGameEnded);

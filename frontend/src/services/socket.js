@@ -3,14 +3,18 @@ import { io } from 'socket.io-client';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
 /**
- * Singleton Socket.IO client with auto-reconnect.
- * Import `socket` wherever you need to emit/listen.
+ * Singleton Socket.IO client.
+ * voluntaryLeave — set to true before intentionally leaving a room so the
+ * reconnect handler knows NOT to re-join the old session.
  */
+export let voluntaryLeave = false;
+export const setVoluntaryLeave = (v) => { voluntaryLeave = v; };
+
 const socket = io(BACKEND_URL, {
   autoConnect: false,       // connect manually when player enters
   reconnection: true,
-  reconnectionAttempts: 10,
-  reconnectionDelay: 1000,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1500,
   reconnectionDelayMax: 5000,
   timeout: 20000,
   transports: ['websocket', 'polling'],

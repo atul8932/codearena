@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, color } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import socket from '../services/socket';
+import socket, { voluntaryLeave, setVoluntaryLeave } from '../services/socket';
 import useGameStore from '../store/gameStore';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
@@ -224,8 +224,14 @@ export default function LandingPage() {
     else if (user?.email) setPlayerName(user.email.split('@')[0].slice(0, 20));
   }, [user]);
 
-  // Auto Reconnect Logic
+  // Auto Reconnect Logic — skip if the user intentionally left
   useEffect(() => {
+    // If the user explicitly left, reset the flag and skip auto-rejoin
+    if (voluntaryLeave) {
+      setVoluntaryLeave(false);
+      localStorage.removeItem('codearena_roomId');
+      return;
+    }
     const savedRoom = localStorage.getItem('codearena_roomId');
     if (savedRoom) {
       setRoomId(savedRoom);
