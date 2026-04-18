@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, color } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import socket from '../services/socket';
@@ -20,7 +20,7 @@ export function TopNav({ right }) {
   };
 
   const avatarUrl = user?.photoURL;
-  const initials  = user?.displayName?.slice(0,2).toUpperCase() || user?.email?.slice(0,2).toUpperCase() || '??';
+  const initials = user?.displayName?.slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || '??';
 
   return (
     <nav className="top-nav">
@@ -80,16 +80,16 @@ export function TopNav({ right }) {
           {/* Avatar — click to go to profile */}
           <button onClick={() => navigate('/profile')}
             className="flex items-center gap-2 rounded-lg px-2 py-1 transition-all"
-            style={{ background:'transparent', border:'none', cursor:'pointer' }}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
             title="View profile">
             <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center text-xs font-bold"
-              style={{ background: avatarUrl ? 'transparent' : 'var(--accent)', color:'#fff', border:'1px solid var(--border)' }}>
+              style={{ background: avatarUrl ? 'transparent' : 'var(--accent)', color: '#fff', border: '1px solid var(--border)' }}>
               {avatarUrl
                 ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
                 : initials}
             </div>
             <span className="text-xs font-medium hidden sm:block truncate max-w-[100px]"
-              style={{ color:'var(--text-muted)' }}>
+              style={{ color: 'var(--text-muted)' }}>
               {user.displayName || user.email?.split('@')[0]}
             </span>
           </button>
@@ -118,29 +118,29 @@ export function PageShell({ children, nav }) {
 
 // ─── Features ────────────────────────────────────────────────────────────────
 const features = [
-  { icon: '⚔️', title: 'Real-Time Battles',  desc: 'Compete simultaneously. Every millisecond counts.' },
-  { icon: '🔥', title: 'Power-Ups',          desc: 'Freeze opponents, reveal hints, or double your score.' },
-  { icon: '🎯', title: 'Live Scoreboard',    desc: 'Watch rankings shift live with every submission.' },
-  { icon: '🤖', title: 'AI Commentary',      desc: 'Dynamic AI reacts to every move and milestone.' },
-  { icon: '🏆', title: 'First Blood',        desc: 'First correct submission earns the crown.' },
-  { icon: '👁️', title: 'Spectator Mode',     desc: 'Watch live battles without playing.' },
+  { icon: '⚔️', title: 'Real-Time Battles', desc: 'Compete simultaneously. Every millisecond counts.' },
+  { icon: '🔥', title: 'Power-Ups', desc: 'Freeze opponents, reveal hints, or double your score.' },
+  { icon: '🎯', title: 'Live Scoreboard', desc: 'Watch rankings shift live with every submission.' },
+  { icon: '🤖', title: 'AI Commentary', desc: 'Dynamic AI reacts to every move and milestone.' },
+  { icon: '🏆', title: 'First Blood', desc: 'First correct submission earns the crown.' },
+  { icon: '👁️', title: 'Spectator Mode', desc: 'Watch live battles without playing.' },
 ];
 
 // ─── DecryptedText Component ───────────────────────────────────────────────────
 function DecryptedText({ text, speed = 40, className, style }) {
   const [displayText, setDisplayText] = useState('');
-  
+
   useEffect(() => {
     let i = 0;
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*';
-    
+
     const interval = setInterval(() => {
       setDisplayText(prev => {
         if (i >= text.length) {
           clearInterval(interval);
           return text;
         }
-        
+
         let result = text.substring(0, i);
         for (let j = i; j < text.length; j++) {
           if (text[j] === ' ') result += ' ';
@@ -148,13 +148,43 @@ function DecryptedText({ text, speed = 40, className, style }) {
         }
         return result;
       });
-      i += 1/3; // Controls how fast it settles
+      i += 1 / 3; // Controls how fast it settles
     }, speed);
-    
+
     return () => clearInterval(interval);
   }, [text, speed]);
 
   return <span className={className} style={style}>{displayText}</span>;
+}
+
+// ─── Custom Loading Window ──────────────────────────────────────────────────
+function CustomLoadingWindow({ isVisible, message = "INITIALIZING SESSION..." }) {
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 1.1, opacity: 0 }}
+        className="card w-full max-w-sm border border-neon-blue/50 shadow-[0_0_30px_rgba(0,240,255,0.2)] flex flex-col items-center justify-center p-8 text-center"
+      >
+        <div className="relative w-16 h-16 mb-6">
+          <div className="absolute inset-0 border-4 border-neon-blue/20 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-neon-blue rounded-full border-t-transparent animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center text-neon-blue text-xs font-bold">
+            ⚡
+          </div>
+        </div>
+        <h3 className="text-neon-blue font-bold font-display tracking-widest uppercase mb-2">
+          <DecryptedText text={message} speed={20} />
+        </h3>
+        <p className="text-slate-400 text-xs font-cyber animate-pulse">
+          Establishing secure WebSocket connection...
+        </p>
+      </motion.div>
+    </div>
+  );
 }
 
 // ─── LandingPage ─────────────────────────────────────────────────────────────
@@ -185,8 +215,8 @@ export default function LandingPage() {
 
   // Pre-fill name from Firebase auth
   useEffect(() => {
-    if (user?.displayName) setPlayerName(user.displayName.slice(0,20));
-    else if (user?.email)  setPlayerName(user.email.split('@')[0].slice(0,20));
+    if (user?.displayName) setPlayerName(user.displayName.slice(0, 20));
+    else if (user?.email) setPlayerName(user.email.split('@')[0].slice(0, 20));
   }, [user]);
 
   // Auto Reconnect Logic
@@ -195,7 +225,7 @@ export default function LandingPage() {
     if (savedRoom) {
       setRoomId(savedRoom);
       const doEmit = () => {
-        socket.emit('joinRoom', { roomId: savedRoom, playerName: user?.displayName?.slice(0,20) || 'ReconnectingPlayer', uid: user?.uid || null, autoReconnect: true });
+        socket.emit('joinRoom', { roomId: savedRoom, playerName: user?.displayName?.slice(0, 20) || 'ReconnectingPlayer', uid: user?.uid || null, autoReconnect: true });
       };
       if (socket.connected) doEmit();
       else { socket.once('connect', doEmit); socket.connect(); }
@@ -204,7 +234,7 @@ export default function LandingPage() {
 
   const handleConnect = () => {
     const name = playerName.trim();
-    const uid  = user?.uid || null;
+    const uid = user?.uid || null;
     if (!name) return toast.error('Enter your name!');
     if (name.length > 20) return toast.error('Name too long (max 20 chars)');
     if (mode === 'join' || mode === 'spectate') {
@@ -228,24 +258,25 @@ export default function LandingPage() {
 
   return (
     <PageShell nav={<TopNav />}>
+      <CustomLoadingWindow isVisible={isConnecting} message={mode === 'create' ? "LAUNCHING ROOM..." : "ENTERING ARENA..."} />
       <div className="flex-1 flex flex-col">
 
         {/* ── Sub-header ── */}
         <div className="px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between"
           style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight drop-shadow-lg" 
-                style={{ 
-                  backgroundImage: 'linear-gradient(to right, var(--neon-blue), var(--neon-purple), var(--neon-pink))',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}>
-              <DecryptedText text="WELCOME TO CODEARENA" />
+            <h1 className="text-2xl sm:text-3xl font-display tracking-tight drop-shadow-lg"
+              style={{
+                backgroundImage: 'linear-gradient(to right, var(--neon-blue), var(--neon-purple), var(--neon-pink))',
+                WebkitBackgroundClip: 'text',
+                // WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}>
+              <text>Welcome to CodeArena</text>
             </h1>
             <p className="text-xs sm:text-sm mt-1 font-cyber tracking-widest uppercase flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
               <span className="w-2 h-2 rounded-full animate-pulse bg-neon-pink shadow-[0_0_8px_var(--neon-pink)] shrink-0"></span>
-              <DecryptedText text="Real-Time Multiplayer Coding Battles" speed={30} />
+              <text >Real-Time Multiplayer Coding Battles</text>
             </p>
           </div>
           <div className="status-online text-xs">ARENA ONLINE</div>
@@ -261,7 +292,7 @@ export default function LandingPage() {
                 <div className="text-center py-8 sm:py-12">
                   <h2 className="text-2xl sm:text-4xl font-bold mb-3" style={{ color: 'var(--text)' }}>
                     Enter the Arena.{' '}
-                    <span style={{ color: 'var(--accent)' }}>Code to Win.</span>
+                    <span style={{ color: 'var(--accent)' }}><DecryptedText text="Code to Win." /></span>
                   </h2>
                   <p className="text-sm sm:text-base mb-6 sm:mb-8 max-w-lg mx-auto px-4" style={{ color: 'var(--text-muted)' }}>
                     Solve problems faster than your opponents in real-time coding battles.
