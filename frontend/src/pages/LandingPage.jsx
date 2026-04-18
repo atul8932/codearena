@@ -24,14 +24,19 @@ export function TopNav({ right }) {
 
   return (
     <nav className="top-nav">
-      {/* Brand */}
-      <div className="flex items-center gap-2">
+      {/* Brand — click navigates home */}
+      <button
+        onClick={() => navigate('/')}
+        className="flex items-center gap-2 rounded-lg px-1 py-0.5 transition-all"
+        style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+        title="Go to home"
+      >
         <div className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold"
           style={{ background: 'var(--accent)', color: '#fff' }}>⚡</div>
         <span className="text-sm font-bold tracking-wide" style={{ color: 'var(--text)', letterSpacing: '-0.01em' }}>
           CODE<span style={{ color: 'var(--accent)' }}>ARENA</span>
         </span>
-      </div>
+      </button>
 
       <div className="flex-1" />
 

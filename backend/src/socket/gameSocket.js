@@ -155,11 +155,18 @@ function initGameSocket(io) {
           updatedPlayers[socket.id] = player;
           io.to(roomId).emit('commentary', { message: `⚡ ${player.name} reconnected!` });
         } else {
+          // If this is an admin-created room and no real players have joined yet,
+          // make the first joiner the host so they can start the game.
+          const existingRealPlayers = Object.values(updatedPlayers).filter(
+            (p) => !p.isSpectator && !p.isOffline
+          );
+          const shouldBeHost = room.createdByAdmin && existingRealPlayers.length === 0 && !spectate;
+
           player = {
             id: socket.id,
             name: playerName || `Player_${socket.id.slice(0, 4)}`,
             uid: uid || null,
-            isHost: false,
+            isHost: shouldBeHost,
             isReady: false,
             isSpectator: spectate,
             score: 0,
@@ -170,6 +177,10 @@ function initGameSocket(io) {
             isTyping: false,
           };
           updatedPlayers[socket.id] = player;
+
+          if (shouldBeHost) {
+            io.to(roomId).emit('commentary', { message: `👑 ${player.name} joined first and is now the host!` });
+          }
         }
 
         await updateRoom(roomId, { players: updatedPlayers });
@@ -210,6 +221,51 @@ function initGameSocket(io) {
         io.to(roomId).emit('playersUpdate', { players });
       } catch (err) {
         console.error('playerReady error:', err);
+      }
+    });
+
+    // ── LEAVE ROOM ─────────────────────────────────────────────────────────
+    socket.on('leaveRoom', async ({ roomId }) => {
+      try {
+        const room = await getRoom(roomId);
+        if (!room) return;
+
+        const players = { ...(room.players || {}) };
+        const leaving = players[socket.id];
+        if (!leaving) return;
+
+        delete players[socket.id];
+        socket.leave(roomId);
+        socket.data.roomId = null;
+
+        const remaining = Object.values(players).filter((p) => !p.isSpectator && !p.isOffline);
+
+        if (remaining.length === 0) {
+          await deleteRoom(roomId);
+          console.log(`🗑️  Room ${roomId} deleted (all players left)`);
+        } else {
+          // Transfer host if the leaving player was host
+          if (leaving.isHost) {
+            const newHost = remaining[0];
+            if (newHost) {
+              players[newHost.id].isHost = true;
+              io.to(newHost.id).emit('hostTransferred', { message: "You're now the host!" });
+            }
+          }
+          await updateRoom(roomId, { players });
+          io.to(roomId).emit('playerLeft', {
+            playerId: socket.id,
+            playerName: leaving.name,
+            players,
+          });
+          io.to(roomId).emit('commentary', {
+            message: `👋 ${leaving.name} left the lobby.`,
+          });
+        }
+
+        console.log(`🚪 ${leaving.name} left room ${roomId}`);
+      } catch (err) {
+        console.error('leaveRoom error:', err);
       }
     });
 

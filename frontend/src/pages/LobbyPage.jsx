@@ -7,6 +7,7 @@ import useGameStore from '../store/gameStore';
 import { TopNav, PageShell } from './LandingPage';
 import VotingOverlay from './VotingOverlay';
 
+
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 const COLORS = ['#ef4444','#f97316','#F5A623','#22c55e','#60a5fa','#a78bfa','#E8871A','#e879f9'];
 function Avatar({ name, size = 34, isHost }) {
@@ -96,11 +97,29 @@ export default function LobbyPage() {
   const readyCount = realPlayers.filter((p) => p.isReady).length;
   const allReady = realPlayers.length > 1 && realPlayers.every((p) => p.isReady || p.isHost);
   const myData = player ? players[player.id] || player : null;
+  const isHost = myData?.isHost === true;
+
+  // Listen for host promotion (admin-room: first joiner, or host left)
+  useEffect(() => {
+    const onHostTransferred = ({ message }) => {
+      useGameStore.getState().updatePlayer({ isHost: true });
+      toast.success(message || "You're now the host!", { icon: '👑' });
+    };
+    socket.on('hostTransferred', onHostTransferred);
+    return () => socket.off('hostTransferred', onHostTransferred);
+  }, []);
+
 
   const handleReady  = () => socket.emit('playerReady', { roomId });
   const handleStart  = () => { if (realPlayers.length < 1) return toast.error('Need at least 1 player!'); socket.emit('startGame', { roomId }); };
   const handleCopy   = () => { navigator.clipboard.writeText(roomId); setCopied(true); toast.success('Room ID copied!', { icon: '📋' }); setTimeout(() => setCopied(false), 2000); };
   const handleToggle = () => socket.emit('toggleAnonymous', { roomId });
+  const handleLeave  = () => {
+    socket.emit('leaveRoom', { roomId });
+    useGameStore.getState().resetAll();
+    navigate('/');
+  };
+
 
   const diffColor = { Hard: 'var(--accent)', Medium: 'var(--bronze)', Easy: 'var(--green)' }[room?.difficulty] || 'var(--text-dim)';
 
@@ -122,7 +141,22 @@ export default function LobbyPage() {
           <p className="text-xs mt-0.5 hidden sm:block" style={{ color: 'var(--text-dim)' }}>Share the Room ID and wait for opponents</p>
         </div>
         <div className="flex items-center gap-2">
-          {player?.isHost ? (
+          {/* Leave Lobby button — always visible */}
+          <button
+            onClick={handleLeave}
+            className="text-xs sm:text-sm px-3 py-1.5 rounded-lg transition-all font-semibold"
+            style={{
+              background: 'rgba(239,68,68,0.08)',
+              color: 'var(--accent)',
+              border: '1px solid rgba(239,68,68,0.25)',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.18)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
+          >
+            🚪 Leave
+          </button>
+
+          {isHost ? (
             <button onClick={handleStart}
               disabled={realPlayers.length < 1}
               className="btn-primary text-xs sm:text-sm"
@@ -137,6 +171,7 @@ export default function LobbyPage() {
             </button>
           )}
         </div>
+
       </div>
 
       {/* Content */}
