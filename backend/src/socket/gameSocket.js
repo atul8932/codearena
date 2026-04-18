@@ -160,7 +160,9 @@ function initGameSocket(io) {
           const existingRealPlayers = Object.values(updatedPlayers).filter(
             (p) => !p.isSpectator && !p.isOffline
           );
-          const shouldBeHost = room.createdByAdmin && existingRealPlayers.length === 0 && !spectate;
+          // Use !! to ensure always boolean — room.createdByAdmin may be undefined
+          // which would make shouldBeHost=undefined and crash Firestore
+          const shouldBeHost = !!(room.createdByAdmin === true && existingRealPlayers.length === 0 && !spectate);
 
           player = {
             id: socket.id,
@@ -336,30 +338,33 @@ function initGameSocket(io) {
           // 15s Voting Timer
           let timeLeft = 15;
           const vInterval = setInterval(async () => {
-            const r = await getRoom(roomId);
-            if (!r || r.state !== 'voting') return clearInterval(vInterval);
-            
-            if (timeLeft > 0) {
-              io.to(roomId).emit('votingTick', { timeLeft });
-              timeLeft--;
-            } else {
+            try {
+              const r = await getRoom(roomId);
+              if (!r || r.state !== 'voting') return clearInterval(vInterval);
+              
+              if (timeLeft > 0) {
+                io.to(roomId).emit('votingTick', { timeLeft });
+                timeLeft--;
+              } else {
+                clearInterval(vInterval);
+                // Tally votes
+                const counts = {};
+                Object.values(r.votes || {}).forEach(pid => counts[pid] = (counts[pid] || 0) + 1);
+                let selected = r.problemPool[0];
+                let max = -1;
+                r.problemPool.forEach(p => {
+                  if ((counts[p.id] || 0) > max) {
+                    max = counts[p.id] || 0;
+                    selected = p;
+                  } else if ((counts[p.id] || 0) === max) {
+                    if (Math.random() > 0.5) selected = p;
+                  }
+                });
+                startCountdown(io, roomId, selected);
+              }
+            } catch (err) {
               clearInterval(vInterval);
-              // Tally votes
-              const counts = {};
-              Object.values(r.votes || {}).forEach(pid => counts[pid] = (counts[pid] || 0) + 1);
-              let selected = r.problemPool[0];
-              let max = -1;
-              r.problemPool.forEach(p => {
-                if ((counts[p.id] || 0) > max) {
-                  max = counts[p.id] || 0;
-                  selected = p;
-                } else if ((counts[p.id] || 0) === max) {
-                  // tiebreak random
-                  if (Math.random() > 0.5) selected = p;
-                }
-              });
-
-              startCountdown(io, roomId, selected);
+              console.error('voting interval error:', err.message);
             }
           }, 1000);
 
@@ -384,19 +389,24 @@ function initGameSocket(io) {
       
       let count = 3;
       const cdInterval = setInterval(async () => {
-        if (count > 0) {
-          io.to(roomId).emit('countdownTick', { count });
-          count--;
-        } else {
+        try {
+          if (count > 0) {
+            io.to(roomId).emit('countdownTick', { count });
+            count--;
+          } else {
+            clearInterval(cdInterval);
+            const startTime = Date.now();
+            await updateRoom(roomId, { state: 'battle', startTime });
+            io.to(roomId).emit('gameStarted', {
+              startTime,
+              problem: sanitizeProblem(problem),
+              duration: room.duration || 1200,
+            });
+            startGameTimer(io, roomId, room.duration || 1200);
+          }
+        } catch (err) {
           clearInterval(cdInterval);
-          const startTime = Date.now();
-          await updateRoom(roomId, { state: 'battle', startTime });
-          io.to(roomId).emit('gameStarted', {
-            startTime,
-            problem: sanitizeProblem(problem),
-            duration: room.duration || 1200,
-          });
-          startGameTimer(io, roomId, room.duration || 1200);
+          console.error('countdown interval error:', err.message);
         }
       }, 1000);
     }
@@ -874,28 +884,31 @@ function startGameTimer(io, roomId, durationSeconds) {
   roomTimersState.set(roomId, { remaining: durationSeconds, elapsed: 0, isFrozen: false });
 
   const interval = setInterval(async () => {
-    const state = roomTimersState.get(roomId);
-    if (!state) return clearInterval(interval);
+    try {
+      const state = roomTimersState.get(roomId);
+      if (!state) return clearInterval(interval);
 
-    if (state.isFrozen) {
-      // Skip decrementing timer while frozen
-      return;
-    }
+      if (state.isFrozen) return; // Skip tick while frozen
 
-    state.elapsed += 1;
-    state.remaining -= 1;
+      state.elapsed += 1;
+      state.remaining -= 1;
 
-    if (state.remaining <= 0) {
+      if (state.remaining <= 0) {
+        clearInterval(interval);
+        roomTimersState.delete(roomId);
+        await endGame(io, roomId);
+      } else {
+        io.to(roomId).emit('timerTick', { remaining: state.remaining, elapsed: state.elapsed });
+
+        // Periodic commentary
+        if (state.elapsed % 60 === 0 && state.elapsed > 0) {
+          io.to(roomId).emit('commentary', { message: pickRandom(COMMENTARY.general) });
+        }
+      }
+    } catch (err) {
       clearInterval(interval);
       roomTimersState.delete(roomId);
-      await endGame(io, roomId);
-    } else {
-      io.to(roomId).emit('timerTick', { remaining: state.remaining, elapsed: state.elapsed });
-
-      // Periodic commentary
-      if (state.elapsed % 60 === 0 && state.elapsed > 0) {
-        io.to(roomId).emit('commentary', { message: pickRandom(COMMENTARY.general) });
-      }
+      console.error(`gameTimer error in room ${roomId}:`, err.message);
     }
   }, 1000);
 
