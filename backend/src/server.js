@@ -16,10 +16,24 @@ initFirebase();
 const app = express();
 const server = http.createServer(app);
 
+// ─── Allowed CORS Origins ────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'https://codearena-nu.vercel.app',
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
 // ─── Socket.IO ───────────────────────────────────────────────────────────────
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (origin, cb) => {
+      // Allow requests with no origin (mobile apps, curl) or matching origins
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+      cb(new Error(`CORS: origin ${origin} not allowed`));
+    },
     methods: ['GET', 'POST'],
   },
   pingTimeout: 60000,
@@ -27,7 +41,7 @@ const io = new Server(server, {
 });
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
-app.use(cors({ origin: [process.env.CLIENT_URL || 'http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5174', 'https://codearena-nu.vercel.app'] }));
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json({ limit: '50kb' }));
 
 // ─── REST Routes ─────────────────────────────────────────────────────────────
