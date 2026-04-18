@@ -199,7 +199,7 @@ export default function LandingPage() {
   const [maxPlayers, setMaxPlayers] = useState('8');
   const [isPrivate, setIsPrivate] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const { resetAll } = useGameStore();
+  const { resetAll, roomType, setRoomType } = useGameStore();
 
   const [publicRooms, setPublicRooms] = useState([]);
 
@@ -244,7 +244,7 @@ export default function LandingPage() {
     setIsConnecting(true);
     const doEmit = () => {
       if (mode === 'create') {
-        socket.emit('createRoom', { playerName: name, isPrivate, difficulty: difficulty || null, timeLimit: parseInt(timeLimit), maxPlayers: parseInt(maxPlayers), uid });
+        socket.emit('createRoom', { playerName: name, isPrivate, difficulty: difficulty || null, timeLimit: parseInt(timeLimit), maxPlayers: parseInt(maxPlayers), uid, roomType });
       } else if (mode === 'spectate') {
         socket.emit('joinRoom', { roomId: roomId.trim().toUpperCase(), playerName: name, spectate: true, uid });
       } else {
@@ -425,9 +425,7 @@ export default function LandingPage() {
                     {mode === 'create' && (
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                            Difficulty <span style={{ color: 'var(--text-dim)' }}>(optional)</span>
-                          </label>
+                          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Difficulty</label>
                           <select id="difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="input-cyber">
                             <option value="">Random</option>
                             <option value="Easy">Easy</option>
@@ -483,9 +481,8 @@ export default function LandingPage() {
         {/* Footer */}
         <div className="px-4 sm:px-6 py-3 flex items-center justify-between text-xs"
           style={{ borderTop: '1px solid var(--border)', color: 'var(--text-dim)' }}>
-          <span>CodeArena © 2024</span>
+          <span>CodeArena © 2026</span>
           <span className="hidden sm:block">Real-Time Multiplayer Coding Battles</span>
-          <span>Built with ⚡</span>
         </div>
       </div>
     </PageShell>

@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import socket from '../services/socket';
 import useGameStore from '../store/gameStore';
 import { TopNav, PageShell } from './LandingPage';
+import VotingOverlay from './VotingOverlay';
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 const COLORS = ['#ef4444','#f97316','#F5A623','#22c55e','#60a5fa','#a78bfa','#E8871A','#e879f9'];
@@ -110,6 +111,7 @@ export default function LobbyPage() {
       />
     }>
       <AnimatePresence>
+        {gamePhase === 'voting' && <VotingOverlay />}
         {gamePhase === 'countdown' && countdownValue != null && <CountdownOverlay value={countdownValue} />}
       </AnimatePresence>
 

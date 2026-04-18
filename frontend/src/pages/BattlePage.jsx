@@ -7,6 +7,52 @@ import toast from 'react-hot-toast';
 import socket from '../services/socket';
 import useGameStore from '../store/gameStore';
 
+// ─── Anti-Cheat Hook ─────────────────────────────────────────────────────────
+function useAntiCheat(roomId, isActive) {
+  const { warnings, isDisqualified, incrementWarning } = useGameStore();
+  const lastCopyTime = useRef(0);
+
+  useEffect(() => {
+    if (!isActive || isDisqualified) return;
+
+    const reportViolation = (reason) => {
+      socket.emit('anticheatViolation', { roomId, reason });
+    };
+
+    const onVisibility = () => {
+      if (document.hidden) reportViolation('Tab switch detected');
+    };
+
+    const onCopy = () => {
+      const now = Date.now();
+      if (now - lastCopyTime.current > 2000) {
+        lastCopyTime.current = now;
+        reportViolation('Copy detected');
+      }
+    };
+
+    const onPaste = (e) => {
+      const text = e.clipboardData?.getData('text') || '';
+      if (text.length > 10) reportViolation('Paste detected');
+    };
+
+    const onContextMenu = (e) => e.preventDefault();
+
+    document.addEventListener('visibilitychange', onVisibility);
+    document.addEventListener('copy', onCopy);
+    document.addEventListener('paste', onPaste);
+    document.addEventListener('contextmenu', onContextMenu);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      document.removeEventListener('copy', onCopy);
+      document.removeEventListener('paste', onPaste);
+      document.removeEventListener('contextmenu', onContextMenu);
+    };
+  }, [roomId, isActive, isDisqualified]);
+
+  return { warnings, isDisqualified };
+}
+
 // ─── Timer ────────────────────────────────────────────────────────────────────
 function TimerDisplay({ seconds }) {
   const m = Math.floor(seconds / 60);
@@ -16,6 +62,125 @@ function TimerDisplay({ seconds }) {
     <div className={`font-mono text-base font-bold tabular-nums ${isCritical ? 'animate-pulse' : ''}`}
       style={{ color: isCritical ? 'var(--accent)' : isUrgent ? 'var(--bronze)' : 'var(--text)' }}>
       {String(m).padStart(2,'0')}:{String(s).padStart(2,'0')}
+    </div>
+  );
+}
+
+// ─── First Blood Animation ────────────────────────────────────────────────────
+function FirstBloodBanner({ playerName, onDone }) {
+  useEffect(() => { const t = setTimeout(onDone, 4000); return () => clearTimeout(t); }, []);
+  return (
+    <motion.div initial={{ opacity:0, scale:0.6 }} animate={{ opacity:1, scale:1 }}
+      exit={{ opacity:0, scale:1.4 }} transition={{ type:'spring', stiffness:200 }}
+      className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none">
+      <div className="text-center px-10 py-8 rounded-2xl" style={{ background:'rgba(26,0,16,0.97)', border:'2px solid #ff206e', boxShadow:'0 0 60px rgba(255,32,110,0.4)' }}>
+        <div className="text-6xl mb-3">🩸</div>
+        <div className="text-4xl font-black tracking-widest" style={{ color:'#ff206e' }}>FIRST BLOOD</div>
+        <div className="text-xl font-bold mt-2" style={{ color:'#ff206e', opacity:0.7 }}>{playerName}</div>
+        <div className="text-xs font-mono mt-3 tracking-widest" style={{ color:'rgba(255,32,110,0.5)' }}>DRAWS FIRST BLOOD!</div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Disqualified Overlay ─────────────────────────────────────────────────────
+function DisqualifiedOverlay() {
+  return (
+    <div className="fixed inset-0 z-[150] flex flex-col items-center justify-center" style={{ background:'rgba(10,0,0,0.97)', backdropFilter:'blur(12px)' }}>
+      <motion.div initial={{ scale:0.5, opacity:0 }} animate={{ scale:1, opacity:1 }} transition={{ type:'spring' }} className="text-center px-12 py-10 rounded-2xl" style={{ border:'2px solid #ef4444', background:'rgba(26,0,0,0.9)', boxShadow:'0 0 80px rgba(239,68,68,0.3)' }}>
+        <div className="text-7xl mb-4">🚫</div>
+        <h2 className="text-4xl font-black" style={{ color:'#ef4444' }}>DISQUALIFIED</h2>
+        <p className="mt-4 text-sm font-mono" style={{ color:'rgba(239,68,68,0.6)' }}>You violated the integrity policy 5 times.</p>
+        <p className="mt-2 text-xs" style={{ color:'rgba(239,68,68,0.4)' }}>Your score has been reset to 0.</p>
+      </motion.div>
+    </div>
+  );
+}
+
+// ─── Warning Bar ──────────────────────────────────────────────────────────────
+function WarningBar({ warnings }) {
+  if (!warnings) return null;
+  const MAX = 5;
+  return (
+    <div className="flex items-center gap-2 px-3 py-1 rounded" style={{ background:'rgba(249,115,22,0.08)', border:'1px solid rgba(249,115,22,0.3)' }}>
+      <span className="text-xs font-mono" style={{ color:'#f97316' }}>⚠️ INTEGRITY</span>
+      {Array.from({ length: MAX }).map((_,i) => (
+        <span key={i} className="w-2 h-2 rounded-full" style={{ background: i < warnings ? '#f97316' : 'rgba(249,115,22,0.15)', boxShadow: i < warnings ? '0 0 6px #f97316' : 'none' }} />
+      ))}
+      <span className="text-xs font-mono" style={{ color:'rgba(249,115,22,0.7)' }}>{warnings}/5</span>
+    </div>
+  );
+}
+
+// ─── Player Status Sidebar ────────────────────────────────────────────────────
+function PlayerStatusPanel({ players, myId, teams }) {
+  const all = Object.values(players).filter(p => !p.isSpectator);
+  const statusIcon = (s) => ({ solved:'🟢', partial:'🟡', failed:'🔴', coding:'🔵', waiting:'⚪', disqualified:'🚫' }[s] || '⚪');
+  const teamColor = (t) => t === 'A' ? 'rgba(96,165,250,0.15)' : t === 'B' ? 'rgba(239,68,68,0.1)' : 'transparent';
+  const teamBorder = (t) => t === 'A' ? 'rgba(96,165,250,0.3)' : t === 'B' ? 'rgba(239,68,68,0.3)' : 'var(--border)';
+
+  const teamA = all.filter(p => p.team === 'A');
+  const teamB = all.filter(p => p.team === 'B');
+  const solo = all.filter(p => !p.team);
+  const groups = teams ? [['ALPHA', teamA, 'A'], ['BRAVO', teamB, 'B']] : [['PLAYERS', solo, null]];
+
+  return (
+    <div className="space-y-3">
+      {groups.map(([label, group, team]) => (
+        <div key={label}>
+          <div className="text-[9px] font-bold tracking-[0.15em] mb-2" style={{ color: team === 'A' ? 'var(--blue)' : team === 'B' ? 'var(--accent)' : 'var(--text-dim)' }}>⚔️ TEAM {label}</div>
+          <div className="space-y-1.5">
+            {group.map(p => (
+              <div key={p.id} className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                style={{ background: teamColor(p.team), border: `1px solid ${teamBorder(p.team)}` }}>
+                <span className="text-sm">{statusIcon(p.status)}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold truncate" style={{ color: p.id === myId ? 'var(--gold)' : 'var(--text)' }}>
+                    {p.name}{p.id === myId && <span className="ml-1 text-[9px]" style={{ color:'var(--accent)' }}>YOU</span>}
+                  </div>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <div className="flex-1 h-1 rounded-full" style={{ background:'rgba(255,255,255,0.05)' }}>
+                      <div className="h-full rounded-full transition-all" style={{ width:`${p.progress||0}%`, background: p.status==='solved' ? 'var(--green)' : p.status==='partial' ? 'var(--orange)' : 'var(--blue)' }} />
+                    </div>
+                    <span className="text-[9px] font-mono shrink-0" style={{ color:'var(--text-dim)' }}>{p.score||0}pts</span>
+                  </div>
+                </div>
+                {p.isDisqualified && <span className="text-[9px] font-mono" style={{ color:'var(--accent)' }}>DQ</span>}
+                {p.attempts > 0 && !p.isDisqualified && <span className="text-[9px] font-mono shrink-0" style={{ color:'var(--text-dim)' }}>×{p.attempts}</span>}
+              </div>
+            ))}
+            {group.length === 0 && <div className="text-xs py-2" style={{ color:'var(--text-dim)' }}>No players</div>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Team VS Panel ───────────────────────────────────────────────────────────
+function TeamVsPanel({ players, room }) {
+  const getTeamScore = (team) => Object.values(players).filter(p => p.team === team).reduce((acc, p) => acc + (p.score || 0), 0);
+  const scoreA = getTeamScore('A');
+  const scoreB = getTeamScore('B');
+  const total = scoreA + scoreB || 1;
+
+  return (
+    <div className="flex flex-col gap-3 p-4 rounded-lg" style={{ background:'var(--surface-2)', border:'1px solid var(--border)' }}>
+      <div className="flex items-center justify-between">
+        <div className="text-center">
+          <div className="text-[9px] font-bold tracking-widest" style={{ color:'var(--blue)' }}>TEAM ALPHA</div>
+          <div className="text-2xl font-black" style={{ color:'var(--blue)' }}>{scoreA}</div>
+        </div>
+        <div className="text-sm font-bold" style={{ color:'var(--text-dim)' }}>VS</div>
+        <div className="text-center">
+          <div className="text-[9px] font-bold tracking-widest" style={{ color:'var(--accent)' }}>TEAM BRAVO</div>
+          <div className="text-2xl font-black" style={{ color:'var(--accent)' }}>{scoreB}</div>
+        </div>
+      </div>
+      <div className="flex h-1.5 rounded-full overflow-hidden" style={{ background:'rgba(255,255,255,0.05)' }}>
+        <motion.div animate={{ width:`${(scoreA/total)*100}%` }} transition={{ duration:0.5 }} className="h-full" style={{ background:'var(--blue)' }} />
+        <motion.div animate={{ width:`${(scoreB/total)*100}%` }} transition={{ duration:0.5 }} className="h-full" style={{ background:'var(--accent)' }} />
+      </div>
     </div>
   );
 }
@@ -234,7 +399,6 @@ const LANGUAGES = [
 
 // Mobile tabs for battle page
 const MOBILE_TABS = ['problem', 'editor', 'board'];
-
 // ─── BattlePage ───────────────────────────────────────────────────────────────
 export default function BattlePage() {
   const { roomId } = useParams();
@@ -242,10 +406,82 @@ export default function BattlePage() {
   const { player, players, problem, leaderboard, timer, gamePhase, anonymousMode,
     code, setCode, language, setLanguage, submissionResult, runResult,
     isSubmitting, isRunning, typingPlayers, commentary, isFrozen,
-    setIsSubmitting, setIsRunning, chatMessages } = useGameStore();
+    setIsSubmitting, setIsRunning, chatMessages, cursorPositions, room,
+    teams, firstBloodPlayerId } = useGameStore();
 
+  const isSpectator = !!(player && players[player.id]?.isSpectator);
+  const activePlayers = Object.values(players).filter(p => !p.isSpectator);
+  const myPlayer = player ? players[player.id] : null;
+  const is2v2 = room?.type === '2v2';
+
+  // Anti-cheat
+  const { warnings, isDisqualified } = useAntiCheat(roomId, !isSpectator && gamePhase === 'battle');
+
+  // First-blood banner state
+  const [showFirstBlood, setShowFirstBlood] = useState(false);
+  const [firstBloodName, setFirstBloodName] = useState('');
+  const prevFirstBlood = useRef(null);
+  useEffect(() => {
+    if (firstBloodPlayerId && firstBloodPlayerId !== prevFirstBlood.current) {
+      prevFirstBlood.current = firstBloodPlayerId;
+      const name = players[firstBloodPlayerId]?.name || 'Someone';
+      setFirstBloodName(name);
+      setShowFirstBlood(true);
+    }
+  }, [firstBloodPlayerId]);
+
+  // Problem switch
+  const myTeam = myPlayer?.team;
+  const switchUsed = room?.[`switchUsed_${myTeam}`];
+  const canSwitch = is2v2 && myTeam && !switchUsed && !isSpectator && timer > 0 && (room?.duration - timer) < 300;
+  const handleSwitch = () => {
+    if (!canSwitch) return;
+    socket.emit('switchProblem', { roomId });
+  };
+
+  const editorRef = useRef(null);
+  const monacoRef = useRef(null);
+  const decorationsRef = useRef([]);
   const typingTimer = useRef(null);
   const chatBottomRef = useRef(null);
+
+  const handleEditorDidMount = (editor, monaco) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+
+    editor.onDidChangeCursorPosition((e) => {
+      if (!isSpectator) {
+        socket.emit('cursorMove', { roomId, position: e.position });
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (!editorRef.current || !monacoRef.current) return;
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+
+    const newDecorations = [];
+    Object.entries(cursorPositions || {}).forEach(([pid, pos]) => {
+      if (pid === player?.id) return;
+      
+      newDecorations.push({
+        range: new monaco.Range(pos.lineNumber, pos.column, pos.lineNumber, pos.column),
+        options: {
+          className: 'remote-cursor',
+          stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+          hoverMessage: { value: pos.playerName || 'Teammate' },
+          after: {
+            content: pos.playerName || 'Player',
+            inlineClassName: 'remote-cursor-label',
+          }
+        }
+      });
+    });
+
+    decorationsRef.current = editor.deltaDecorations(decorationsRef.current, newDecorations);
+  }, [cursorPositions]);
+
   const [mobileTab, setMobileTab] = useState('editor');
   const [chatInput, setChatInput] = useState('');
 
@@ -261,8 +497,6 @@ export default function BattlePage() {
     setChatInput('');
   };
 
-  const isSpectator = !!(player && players[player.id]?.isSpectator);
-  const activePlayers = Object.values(players).filter(p => !p.isSpectator);
 
   const [liveCodes, setLiveCodes] = useState({});
   const [spectatingTargetId, setSpectatingTargetId] = useState(activePlayers[0]?.id || null);
@@ -276,9 +510,20 @@ export default function BattlePage() {
   }, []);
 
   useEffect(() => {
-    if (!player||!problem) navigate('/');
-    if (gamePhase==='result') navigate(`/result/${roomId}`);
-  }, [player, problem, gamePhase]);
+    if (gamePhase === 'result') navigate(`/result/${roomId}`);
+  }, [gamePhase]);
+
+  // Loading state if data isn't ready
+  if (!player || !problem) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-dark-bg">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm font-mono text-neon-blue">LOADING BATTLE DATA...</p>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => () => { clearTimeout(typingTimer.current); socket.emit('typing',{ roomId, isTyping:false }); }, [roomId]);
 
@@ -296,13 +541,14 @@ export default function BattlePage() {
   const handleRun = () => {
     if (isSpectator) return toast.error('👁️ Spectators cannot run code!');
     if (isFrozen) return toast.error('❄️ Frozen!');
+    if (isDisqualified) return toast.error('🚫 You are disqualified!');
     socket.emit('runCode',{roomId,code,language}); setIsRunning(true);
-    // On mobile, switch to results view
     setMobileTab('editor');
   };
   const handleSubmit = () => {
     if (isSpectator) return toast.error('👁️ Spectators cannot submit code!');
     if (isFrozen) return toast.error('❄️ Frozen!');
+    if (isDisqualified) return toast.error('🚫 You are disqualified!');
     socket.emit('submitCode',{roomId,code,language}); setIsSubmitting(true);
   };
 
@@ -311,6 +557,12 @@ export default function BattlePage() {
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ background:'var(--bg)' }}>
       {isFrozen && <div className="freeze-overlay" />}
+
+      {/* ── Overlays ── */}
+      <AnimatePresence>
+        {showFirstBlood && <FirstBloodBanner playerName={firstBloodName} onDone={() => setShowFirstBlood(false)} />}
+      </AnimatePresence>
+      {isDisqualified && <DisqualifiedOverlay />}
 
       {/* ── Top bar ── */}
       <div className="flex items-center gap-2 px-3 sm:px-4 shrink-0"
@@ -321,11 +573,20 @@ export default function BattlePage() {
         <div className="w-px h-4 mx-1 shrink-0" style={{ background:'var(--border)' }} />
         <span className="text-xs sm:text-sm font-medium truncate" style={{ color:'var(--text-muted)' }}>{problem?.title||'Battle'}</span>
         {isSpectator && <span className="badge-purple shrink-0 hidden sm:inline-flex" style={{ fontSize:10 }}>👁️ SPEC</span>}
+        {is2v2 && myTeam && <span className="badge-blue shrink-0 hidden sm:inline-flex" style={{ fontSize:10 }}>TEAM {myTeam === 'A' ? 'ALPHA' : 'BRAVO'}</span>}
         <div className="flex-1" />
         <div className="hidden lg:block w-52"><CommentaryTicker messages={commentary} /></div>
         <div className="flex items-center gap-3 shrink-0">
+          <WarningBar warnings={warnings} />
           <TimerDisplay seconds={timer} />
           <span className="text-xs font-mono hidden sm:block" style={{ color:'var(--text-dim)' }}>{roomId}</span>
+          {canSwitch && (
+            <button onClick={handleSwitch} className="btn-ghost text-xs px-2"
+              style={{ color:'var(--orange)', borderColor:'rgba(249,115,22,0.3)' }}
+              title="Switch problem (-20 pts, once per team, first 5 min only)">
+              🔄 Switch
+            </button>
+          )}
           <button onClick={() => { localStorage.removeItem('codearena_roomId'); socket.emit('leaveRoom', { roomId }); navigate('/'); }}
             className="btn-primary !bg-red-500/20 !border-red-500 !text-red-500 hover:!bg-red-500/30 text-xs px-3 py-1">
             <span className="hidden sm:inline">🚪 Exit Battle</span>
@@ -363,6 +624,11 @@ export default function BattlePage() {
           w-full lg:w-80 xl:w-96`}
           style={{ borderRight:'1px solid var(--border)', background:'var(--bg-2)' }}>
           <ProblemContent problem={problem} />
+          {is2v2 && (
+            <div className="p-4 shrink-0" style={{ borderTop:'1px solid var(--border)', background:'var(--bg)' }}>
+              <TeamVsPanel players={players} room={room} />
+            </div>
+          )}
         </div>
 
         {/* ── DESKTOP: Editor + right panel ── */}
@@ -441,11 +707,13 @@ export default function BattlePage() {
                 <Editor height="100%"
                   language={isSpectator ? (liveCodes[spectatingTargetId]?.language || 'python') : monacoLang}
                   value={isSpectator ? (liveCodes[spectatingTargetId]?.code || '/* Waiting for player to type... */') : code}
+                  onMount={handleEditorDidMount}
                   onChange={handleCodeChange} theme="vs-dark"
                   options={{ fontSize:13, fontFamily:'"JetBrains Mono",monospace', fontLigatures:true,
                     minimap:{enabled:false}, scrollBeyondLastLine:false, lineNumbers:'on',
                     renderLineHighlight:'line', cursorBlinking:'smooth', cursorSmoothCaretAnimation:'on',
-                    automaticLayout:true, tabSize:4, wordWrap:'on', readOnly: isFrozen || isSpectator,
+                    automaticLayout:true, tabSize:4, wordWrap:'on',
+                    readOnly: isFrozen || isSpectator || isDisqualified,
                     padding:{top:12,bottom:12}, lineHeight:1.6 }} />
               </div>
 
@@ -461,6 +729,11 @@ export default function BattlePage() {
           <div className={`shrink-0 flex flex-col gap-3 p-3 overflow-y-auto
             ${mobileTab==='board' ? 'flex w-full' : 'hidden'} lg:flex lg:w-72`}
             style={{ borderLeft:'1px solid var(--border)', background:'var(--bg)' }}>
+            {/* Player Status Panel */}
+            <div className="card" style={{ padding:14 }}>
+              <p className="section-title mb-3">👥 Players</p>
+              <PlayerStatusPanel players={players} myId={player?.id} teams={teams} />
+            </div>
             <LiveScoreboard leaderboard={leaderboard} myId={player?.id} anonymousMode={anonymousMode} />
             <div className="card flex-1" style={{ minHeight:200 }}>
               <TestCasePanel submissionResult={submissionResult} runResult={runResult}

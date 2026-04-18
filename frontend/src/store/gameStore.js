@@ -12,10 +12,23 @@ const useGameStore = create((set, get) => ({
     set((state) => ({ player: state.player ? { ...state.player, ...updates } : updates })),
 
   // ─── Room ──────────────────────────────────────────────────────────────
-  room: null,           // { id, players, state, problem, startTime, ... }
+  room: null,           // { id, players, state, problem, startTime, type, teams, ... }
   setRoom: (room) => set({ room }),
   updateRoom: (updates) =>
     set((state) => ({ room: state.room ? { ...state.room, ...updates } : updates })),
+
+  roomType: '1v1',
+  setRoomType: (type) => set({ roomType: type }),
+
+  teams: null,          // { A: [], B: [] }
+  setTeams: (teams) => set({ teams }),
+
+  // ─── Anti-Cheat ────────────────────────────────────────────────────────
+  warnings: 0,          // # of integrity violations
+  isDisqualified: false,
+  setWarnings: (n) => set({ warnings: n }),
+  incrementWarning: () => set((state) => ({ warnings: state.warnings + 1 })),
+  setDisqualified: (v) => set({ isDisqualified: v }),
 
   // Players map (from socket updates)
   players: {},          // { [socketId]: playerObj }
@@ -97,6 +110,29 @@ const useGameStore = create((set, get) => ({
   countdownValue: null,
   setCountdownValue: (v) => set({ countdownValue: v }),
 
+  // ─── Voting State (2v2) ────────────────────────────────────────────────
+  problemPool: [],
+  setProblemPool: (pool) => set({ problemPool: pool }),
+
+  votes: {},            // playerId -> problemId
+  setVotes: (votes) => set({ votes }),
+
+  votingTimeLeft: 0,
+  setVotingTimeLeft: (time) => set({ votingTimeLeft: time }),
+
+  // ─── Presence (Cursor Sync) ───────────────────────────────────────────
+  cursorPositions: {},  // { [playerId]: { lineNumber, column, playerName } }
+  setCursorPosition: (playerId, position) =>
+    set((state) => ({
+      cursorPositions: { ...state.cursorPositions, [playerId]: position }
+    })),
+  removeCursorPosition: (playerId) =>
+    set((state) => {
+      const newPos = { ...state.cursorPositions };
+      delete newPos[playerId];
+      return { cursorPositions: newPos };
+    }),
+
   // ─── Reset ─────────────────────────────────────────────────────────────
   resetGame: () =>
     set({
@@ -119,6 +155,10 @@ const useGameStore = create((set, get) => ({
       powerUpEffect: null,
       isFrozen: false,
       countdownValue: null,
+      warnings: 0,
+      isDisqualified: false,
+      problemPool: [],
+      votes: {},
     }),
 
   resetAll: () =>
@@ -126,6 +166,7 @@ const useGameStore = create((set, get) => ({
       player: null,
       room: null,
       players: {},
+      teams: null,
       gamePhase: 'idle',
       problem: null,
       leaderboard: [],
@@ -147,6 +188,10 @@ const useGameStore = create((set, get) => ({
       isFrozen: false,
       anonymousMode: false,
       countdownValue: null,
+      warnings: 0,
+      isDisqualified: false,
+      problemPool: [],
+      votes: {},
     }),
 }));
 

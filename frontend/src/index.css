@@ -275,10 +275,62 @@ body {
 .monaco-editor-background { background: transparent !important; }
 .toaster-container { z-index: 99999 !important; }
 
-.status-solved  { color: var(--green); }
-.status-partial { color: var(--orange); }
-.status-coding  { color: var(--blue); }
-.status-failed  { color: var(--accent); }
-.status-waiting { color: var(--text-dim); }
+.status-solved       { color: var(--green); }
+.status-partial      { color: var(--orange); }
+.status-coding       { color: var(--blue); }
+.status-failed       { color: var(--accent); }
+.status-waiting      { color: var(--text-dim); }
+.status-disqualified { color: #6b7280; }
 
 .divider { height: 1px; background: var(--border); }
+
+/* ─── Remote Cursor ──────────────────────────────────────────────────── */
+.remote-cursor {
+  width: 2px !important;
+  background-color: var(--blue);
+  box-shadow: 0 0 8px var(--blue);
+  z-index: 10;
+  animation: cursor-blink 1s step-end infinite;
+}
+
+.remote-cursor-label {
+  background-color: var(--blue);
+  color: #111;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+  position: absolute;
+  top: -16px;
+  left: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 11;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Anti-cheat warning flash ──────────────────────────────────────────────── */
+@keyframes warning-flash {
+  0%, 100% { box-shadow: inset 0 0 0 0 transparent; }
+  50%       { box-shadow: inset 0 0 0 4px rgba(249,115,22,0.25); }
+}
+.warning-1 { animation: warning-flash 0.6s ease-out 1; }
+.warning-2 { animation: warning-flash 0.6s ease-out 2; }
+.warning-3 { animation: warning-flash 0.6s ease-out 3; }
+
+/* ─── First Blood glow ───────────────────────────────────────────────────── */
+@keyframes first-blood-pulse {
+  0%, 100% { box-shadow: 0 0 30px rgba(255,32,110,0.2); }
+  50%       { box-shadow: 0 0 60px rgba(255,32,110,0.5); }
+}
+.first-blood-glow { animation: first-blood-pulse 1s ease-in-out infinite; }

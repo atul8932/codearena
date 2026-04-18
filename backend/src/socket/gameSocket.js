@@ -55,6 +55,10 @@ const SUBMIT_COOLDOWN_MS = 10_000;
 // ─── Power-up tracking ───────────────────────────────────────────────────────
 const frozenPlayers = new Set(); // socketIds currently frozen
 
+// ─── Anti-cheat violation tracking ───────────────────────────────────────────
+const violationCounts = new Map(); // socketId → count
+const MAX_WARNINGS = 5;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Socket.IO Game Engine
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,7 +67,7 @@ function initGameSocket(io) {
     console.log(`🔌 Client connected: ${socket.id}`);
 
     // ── CREATE ROOM ────────────────────────────────────────────────────────
-    socket.on('createRoom', async ({ playerName, isPrivate = false, difficulty = null, timeLimit = 20, maxPlayers = 8, uid = null }) => {
+    socket.on('createRoom', async ({ playerName, isPrivate = false, difficulty = null, timeLimit = 20, maxPlayers = 8, uid = null, roomType = '1v1' }) => {
       try {
         const roomId = nanoid(8).toUpperCase();
         const player = {
@@ -85,7 +89,11 @@ function initGameSocket(io) {
           isPrivate,
           difficulty,
           players: { [socket.id]: player },
-          state: 'lobby',     // lobby | countdown | battle | finished
+          state: 'lobby',     // lobby | voting | countdown | battle | finished
+          type: roomType,     // 1v1 | 2v2
+          teams: roomType === '2v2' ? { A: [], B: [] } : null,
+          problemPool: [],    // problems to vote on
+          votes: {},          // playerId -> problemId
           problem: null,
           startTime: null,
           duration: parseInt(timeLimit) * 60,  // converts minutes to seconds
@@ -229,48 +237,222 @@ function initGameSocket(io) {
         }
 
         const realPlayers = Object.values(room.players).filter((p) => !p.isSpectator);
+        if (room.type === '2v2' && realPlayers.length < 4) {
+          return socket.emit('error', { message: 'Need 4 players for a 2v2 match' });
+        }
         if (realPlayers.length < 1) {
           return socket.emit('error', { message: 'Need at least 1 player to start' });
         }
 
-        const problem = getRandomProblem(room.difficulty);
-        await updateRoom(roomId, { state: 'countdown', problem });
+        if (room.type === '2v2') {
+          // Assign Teams
+          const ids = realPlayers.map(p => p.id);
+          const teamA = ids.slice(0, 2);
+          const teamB = ids.slice(2, 4);
+          const players = { ...room.players };
+          teamA.forEach(id => { players[id].team = 'A'; });
+          teamB.forEach(id => { players[id].team = 'B'; });
 
-        io.to(roomId).emit('gameCountdown', { problem: sanitizeProblem(problem) });
-
-        // 3-2-1-GO countdown: emit the current count BEFORE decrementing
-        // so clients receive 3, 2, 1 then immediately the gameStarted event
-        let count = 3;
-        const cdInterval = setInterval(async () => {
-          if (count > 0) {
-            io.to(roomId).emit('countdownTick', { count });
-            count--;
-          } else {
-            clearInterval(cdInterval);
-
-            const startTime = Date.now();
-            await updateRoom(roomId, { state: 'battle', startTime });
-
-            io.to(roomId).emit('gameStarted', {
-              startTime,
-              problem: sanitizeProblem(problem),
-              duration: room.duration || 1200,
-            });
-
-            startGameTimer(io, roomId, room.duration || 1200);
-            console.log(`⚔️  Game started in room ${roomId} — Problem: ${problem.title}`);
+          // Problem selection phase
+          const { PROBLEMS } = require('../data/problems');
+          const pool = [];
+          const diff = room.difficulty;
+          const filtered = diff ? PROBLEMS.filter(p => p.difficulty === diff) : PROBLEMS;
+          while (pool.length < 3 && pool.length < filtered.length) {
+            const p = filtered[Math.floor(Math.random() * filtered.length)];
+            if (!pool.find(x => x.id === p.id)) pool.push(p);
           }
-        }, 1000);
+
+          await updateRoom(roomId, { 
+            state: 'voting', 
+            teams: { A: teamA, B: teamB },
+            players,
+            problemPool: pool,
+            votes: {}
+          });
+
+          io.to(roomId).emit('gameVoting', { 
+            problems: pool.map(sanitizeProblem),
+            teams: { A: teamA, B: teamB },
+            players
+          });
+
+          // 15s Voting Timer
+          let timeLeft = 15;
+          const vInterval = setInterval(async () => {
+            const r = await getRoom(roomId);
+            if (!r || r.state !== 'voting') return clearInterval(vInterval);
+            
+            if (timeLeft > 0) {
+              io.to(roomId).emit('votingTick', { timeLeft });
+              timeLeft--;
+            } else {
+              clearInterval(vInterval);
+              // Tally votes
+              const counts = {};
+              Object.values(r.votes || {}).forEach(pid => counts[pid] = (counts[pid] || 0) + 1);
+              let selected = r.problemPool[0];
+              let max = -1;
+              r.problemPool.forEach(p => {
+                if ((counts[p.id] || 0) > max) {
+                  max = counts[p.id] || 0;
+                  selected = p;
+                } else if ((counts[p.id] || 0) === max) {
+                  // tiebreak random
+                  if (Math.random() > 0.5) selected = p;
+                }
+              });
+
+              startCountdown(io, roomId, selected);
+            }
+          }, 1000);
+
+        } else {
+          let problem = getRandomProblem(room.difficulty);
+          if (!problem) problem = getRandomProblem(null); // Fallback to any problem
+          if (!problem) return socket.emit('error', { message: 'No problems available' });
+          
+          startCountdown(io, roomId, problem);
+        }
       } catch (err) {
         console.error('startGame error:', err);
         socket.emit('error', { message: 'Failed to start game' });
       }
     });
 
-    // ── SUBMIT CODE ───────────────────────────────────────────────────────
+    // Helper to start countdown
+    async function startCountdown(io, roomId, problem) {
+      const room = await getRoom(roomId);
+      await updateRoom(roomId, { state: 'countdown', problem });
+      io.to(roomId).emit('gameCountdown', { problem: sanitizeProblem(problem) });
+      
+      let count = 3;
+      const cdInterval = setInterval(async () => {
+        if (count > 0) {
+          io.to(roomId).emit('countdownTick', { count });
+          count--;
+        } else {
+          clearInterval(cdInterval);
+          const startTime = Date.now();
+          await updateRoom(roomId, { state: 'battle', startTime });
+          io.to(roomId).emit('gameStarted', {
+            startTime,
+            problem: sanitizeProblem(problem),
+            duration: room.duration || 1200,
+          });
+          startGameTimer(io, roomId, room.duration || 1200);
+        }
+      }, 1000);
+    }
+
+    // ── SWITCH PROBLEM (2v2 ONLY) ─────────────────────────────────────────
+    socket.on('switchProblem', async ({ roomId }) => {
+      try {
+        const room = await getRoom(roomId);
+        if (!room || room.state !== 'battle' || room.type !== '2v2') return;
+
+        const elapsed = Math.floor((Date.now() - room.startTime) / 1000);
+        if (elapsed > 300) return socket.emit('error', { message: 'Switch only allowed in first 5 mins' });
+        
+        const player = room.players[socket.id];
+        if (!player || !player.team) return;
+        
+        const teamKey = `switchUsed_${player.team}`;
+        if (room[teamKey]) return socket.emit('error', { message: 'Team already used their switch' });
+
+        const newProblem = getRandomProblem(room.difficulty);
+        await updateRoom(roomId, { 
+          problem: newProblem,
+          [teamKey]: true,
+          leaderboard: (room.leaderboard || []).map(entry => {
+             if (room.players[entry.id]?.team === player.team) {
+               return { ...entry, score: Math.max(0, entry.score - 20) };
+             }
+             return entry;
+          })
+        });
+
+        io.to(roomId).emit('problemSwitched', { 
+          problem: sanitizeProblem(newProblem), 
+          team: player.team,
+          message: `⚠️ Team ${player.team} switched problems! (-20 pts)`
+        });
+      } catch (err) {
+        console.error('switchProblem error:', err);
+      }
+    });
+
+    // ── ANTI-CHEAT VIOLATION ───────────────────────────────────────────────
+    socket.on('anticheatViolation', async ({ roomId, reason }) => {
+      try {
+        const room = await getRoom(roomId);
+        if (!room || room.state !== 'battle') return;
+
+        const player = room.players[socket.id];
+        if (!player || player.isSpectator || player.isDisqualified) return;
+
+        const prev = violationCounts.get(socket.id) || 0;
+        const next = prev + 1;
+        violationCounts.set(socket.id, next);
+
+        if (next < MAX_WARNINGS) {
+          socket.emit('playerWarned', {
+            warnings: next,
+            reason,
+          });
+          io.to(roomId).emit('commentary', {
+            message: `🚨 ${player.name} received an integrity warning! (${next}/${MAX_WARNINGS})`,
+          });
+        } else {
+          // Disqualify
+          const players = { ...room.players };
+          players[socket.id] = {
+            ...player,
+            score: 0,
+            status: 'disqualified',
+            isDisqualified: true,
+          };
+          await updateRoom(roomId, { players });
+
+          socket.emit('playerDisqualified', {
+            reason: `${MAX_WARNINGS} integrity violations — you have been disqualified.`,
+          });
+          io.to(roomId).emit('commentary', {
+            message: `🚫 ${player.name} has been DISQUALIFIED for ${reason}!`,
+          });
+          const leaderboard = buildLeaderboard(players);
+          io.to(roomId).emit('leaderboardUpdate', { leaderboard, players });
+        }
+      } catch (err) {
+        console.error('anticheatViolation error:', err);
+      }
+    });
+
+    // ── VOTE PROBLEM ──────────────────────────────────────────────────────
+    socket.on('voteProblem', async ({ roomId, problemId }) => {
+      try {
+        const room = await getRoom(roomId);
+        if (!room || room.state !== 'voting') return;
+        const votes = { ...room.votes, [socket.id]: problemId };
+        await updateRoom(roomId, { votes });
+        io.to(roomId).emit('votesUpdate', { votes });
+      } catch (err) {
+        console.error('voteProblem error:', err);
+      }
+    });
+
+    // ── CURSOR MOVE ───────────────────────────────────────────────────────
+    socket.on('cursorMove', ({ roomId, position }) => {
+      // Throttle/Broadcast to others in room
+      socket.to(roomId).emit('cursorUpdate', {
+        playerId: socket.id,
+        playerName: socket.data.playerName,
+        position, // { lineNumber, column }
+      });
+    });
+
     socket.on('submitCode', async ({ roomId, code, language }) => {
       try {
-        // Rate limiting
         const lastTime = lastSubmission.get(socket.id) || 0;
         const now = Date.now();
         if (now - lastTime < SUBMIT_COOLDOWN_MS) {
@@ -285,14 +467,14 @@ function initGameSocket(io) {
         const player = room.players[socket.id];
         if (!player || player.isSpectator) return;
 
-        // Sanitize code (strip obvious injection patterns)
-        const sanitized = sanitizeCode(code);
+        // Block disqualified players
+        if (player.isDisqualified) {
+          return socket.emit('submitError', { message: '🚫 You are disqualified and cannot submit.' });
+        }
 
+        const sanitized = sanitizeCode(code);
         socket.emit('submissionQueued', { message: 'Running test cases...' });
-        io.to(roomId).emit('playerActivity', {
-          playerId: socket.id,
-          action: 'submitting',
-        });
+        io.to(roomId).emit('playerActivity', { playerId: socket.id, action: 'submitting' });
 
         const elapsedSeconds = Math.floor((now - room.startTime) / 1000);
         const problem = room.problem;
@@ -302,33 +484,46 @@ function initGameSocket(io) {
         const passedPct = total > 0 ? passed / total : 0;
         const accepted = passed === total;
 
-        // Apply doubleScore power-up if active
-        let score = calcScore(passedPct, elapsedSeconds);
-        if (accepted && player.doubleScore) {
-          score = Math.min(score * 2, BASE_SCORE * 2); // cap at 2× base
+        const players = { ...room.players };
+        let baseScore = calcScore(passedPct, elapsedSeconds);
+        let bonus = 0;
+
+        if (room.type === '2v2') {
+          if (accepted) {
+            const teamMembers = Object.values(players).filter(p => p.team === player.team && p.id !== socket.id);
+            const teamAlreadySolved = teamMembers.some(p => p.status === 'solved');
+            if (!teamAlreadySolved) {
+              bonus = 100; // Team First Blood
+              io.to(roomId).emit('commentary', { message: `🏆 Team ${player.team} scores First Blood! (+100)` });
+            } else {
+              bonus = 50; // Teammate solve
+            }
+          } else {
+            bonus = -10; // Penalty
+          }
         }
+
+        if (accepted && player.doubleScore) {
+          baseScore = Math.min(baseScore * 2, BASE_SCORE * 2);
+        }
+
         const attempts = (player.attempts || 0) + 1;
         const status = accepted ? 'solved' : passedPct > 0 ? 'partial' : 'failed';
 
-        // Update player in room (clear doubleScore flag after use)
-        const players = room.players;
         players[socket.id] = {
           ...player,
-          score: accepted ? score : Math.max(player.score, score),
+          score: (room.type === '2v2') ? Math.max(0, player.score + baseScore + bonus) : (accepted ? baseScore : Math.max(player.score, baseScore)),
           status,
           attempts,
           solvedAt: accepted ? now : player.solvedAt,
           progress: Math.round(passedPct * 100),
-          doubleScore: false, // consumed
+          doubleScore: false,
         };
 
         const firstBlood = accepted && !room.firstBloodId;
         if (firstBlood) {
           await updateRoom(roomId, { players, firstBloodId: socket.id });
           io.to(roomId).emit('firstBlood', { playerId: socket.id, playerName: player.name });
-          io.to(roomId).emit('commentary', {
-            message: pickRandom(COMMENTARY.firstBlood(player.name)),
-          });
         } else {
           await updateRoom(roomId, { players });
         }
@@ -338,7 +533,7 @@ function initGameSocket(io) {
           accepted,
           passed,
           total,
-          score,
+          score: (room.type === '2v2') ? (baseScore + bonus) : baseScore,
           status,
           results: results.map((r) => ({
             input: r.input,
@@ -563,6 +758,7 @@ function initGameSocket(io) {
     // ── DISCONNECT ────────────────────────────────────────────────────────
     socket.on('disconnect', async () => {
       console.log(`🔌 Client disconnected: ${socket.id}`);
+      violationCounts.delete(socket.id);
       const roomId = socket.data.roomId;
       if (!roomId) return;
 

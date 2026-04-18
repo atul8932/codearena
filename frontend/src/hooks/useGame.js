@@ -23,6 +23,9 @@ export function useGame() {
     setAnonymousMode, setCountdownValue, player, room,
     setCode, language,
     resetGame,
+    setProblemPool, setVotes, setVotingTimeLeft,
+    setCursorPosition, removeCursorPosition, setTeams,
+    setWarnings, setDisqualified,
   } = useGameStore();
 
   useEffect(() => {
@@ -76,6 +79,22 @@ export function useGame() {
       setGamePhase('lobby');
     };
     off('roomReset', onRoomReset);
+
+    // ── Voting (2v2) ────────────────────────────────────────────────────
+    const onGameVoting = ({ problems, teams, players }) => {
+      setProblemPool(problems);
+      setTeams(teams);
+      setPlayers(players);
+      setGamePhase('voting');
+      navigate(`/lobby/${useGameStore.getState().room?.id}`); // Voting UI within lobby or separate
+    };
+    off('gameVoting', onGameVoting);
+
+    const onVotingTick = ({ timeLeft }) => setVotingTimeLeft(timeLeft);
+    off('votingTick', onVotingTick);
+
+    const onVotesUpdate = ({ votes }) => setVotes(votes);
+    off('votesUpdate', onVotesUpdate);
 
     // ── Countdown ───────────────────────────────────────────────────────
     const onGameCountdown = ({ problem }) => {
@@ -150,6 +169,18 @@ export function useGame() {
     };
     off('leaderboardUpdate', onLeaderboardUpdate);
 
+    // ── Cursor Updates ───────────────────────────────────────────────────
+    const onCursorUpdate = ({ playerId, playerName, position }) => {
+      setCursorPosition(playerId, { ...position, playerName });
+    };
+    off('cursorUpdate', onCursorUpdate);
+
+    const onProblemSwitched = ({ problem, team, message }) => {
+      setProblem(problem);
+      toast(message, { icon: '⚠️' });
+    };
+    off('problemSwitched', onProblemSwitched);
+
     // ── First Blood ──────────────────────────────────────────────────────
     const onFirstBlood = ({ playerId, playerName }) => {
       setFirstBlood(playerId);
@@ -159,6 +190,26 @@ export function useGame() {
       });
     };
     off('firstBlood', onFirstBlood);
+
+    // ── Anti-Cheat ───────────────────────────────────────────────────────
+    const onPlayerWarned = ({ warnings, reason }) => {
+      setWarnings(warnings);
+      toast(`⚠️ INTEGRITY WARNING ${warnings}/5 — ${reason}`, {
+        duration: 5000,
+        style: { background: '#1a0a00', border: '1px solid #f97316', color: '#f97316' },
+        icon: '🚨',
+      });
+    };
+    off('playerWarned', onPlayerWarned);
+
+    const onPlayerDisqualified = ({ reason }) => {
+      setDisqualified(true);
+      toast.error(`🚫 DISQUALIFIED — ${reason}`, {
+        duration: 999999,
+        style: { background: '#1a0000', border: '2px solid #ef4444', color: '#ef4444' },
+      });
+    };
+    off('playerDisqualified', onPlayerDisqualified);
 
     // ── Player activity ──────────────────────────────────────────────────
     const onPlayerTyping = ({ playerId, isTyping }) => setTypingPlayer(playerId, isTyping);
@@ -236,6 +287,8 @@ export function useGame() {
       socket.off('runResult', onRunResult);
       socket.off('leaderboardUpdate', onLeaderboardUpdate);
       socket.off('firstBlood', onFirstBlood);
+      socket.off('playerWarned', onPlayerWarned);
+      socket.off('playerDisqualified', onPlayerDisqualified);
       socket.off('playerTyping', onPlayerTyping);
       socket.off('progressUpdate', onProgressUpdate);
       socket.off('commentary', onCommentary);
