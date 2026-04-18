@@ -206,7 +206,14 @@ export function useGame() {
     off('gameEnded', onGameEnded);
 
     // ── Errors ───────────────────────────────────────────────────────────
-    const onError = ({ message }) => toast.error(message, { duration: 5000 });
+    const onError = ({ message, silent }) => {
+      if (message === 'Room not found' || silent) {
+        localStorage.removeItem('codearena_roomId');
+      }
+      if (!silent) {
+        toast.error(message, { duration: 5000 });
+      }
+    };
     off('error', onError);
 
     return () => {

@@ -55,7 +55,10 @@ export function TopNav({ right }) {
             </button>
             {showNotifs && (
               <div className="absolute right-0 top-10 w-64 card p-0 overflow-hidden z-50 shadow-2xl" style={{ border: '1px solid var(--border)' }}>
-                <div className="p-3 font-bold text-xs" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}>Admin Notifications</div>
+                <div className="p-3 font-bold text-xs flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}>
+                  <span>Admin Notifications</span>
+                  <button onClick={() => setShowNotifs(false)} className="text-slate-400 hover:text-white transition-colors">✕</button>
+                </div>
                 <div className="max-h-64 overflow-y-auto">
                   {notifications.length === 0 ? (
                     <div className="p-4 text-center text-xs" style={{ color: 'var(--text-dim)' }}>No notifications yet</div>
@@ -151,7 +154,7 @@ export default function LandingPage() {
     if (savedRoom) {
       setRoomId(savedRoom);
       const doEmit = () => {
-        socket.emit('joinRoom', { roomId: savedRoom, playerName: user?.displayName?.slice(0,20) || 'ReconnectingPlayer', uid: user?.uid || null });
+        socket.emit('joinRoom', { roomId: savedRoom, playerName: user?.displayName?.slice(0,20) || 'ReconnectingPlayer', uid: user?.uid || null, autoReconnect: true });
       };
       if (socket.connected) doEmit();
       else { socket.once('connect', doEmit); socket.connect(); }

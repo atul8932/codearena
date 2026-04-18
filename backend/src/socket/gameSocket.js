@@ -109,10 +109,13 @@ function initGameSocket(io) {
     });
 
     // ── JOIN ROOM ──────────────────────────────────────────────────────────
-    socket.on('joinRoom', async ({ roomId, playerName, spectate = false, uid = null }) => {
+    socket.on('joinRoom', async ({ roomId, playerName, spectate = false, uid = null, autoReconnect = false }) => {
       try {
         const room = await getRoom(roomId);
-        if (!room) return socket.emit('error', { message: 'Room not found' });
+        if (!room) {
+          if (autoReconnect) return socket.emit('error', { message: 'Room not found', silent: true });
+          return socket.emit('error', { message: 'Room not found' });
+        }
 
         // Reconnect logic
         let reconnectingPlayer = null;
