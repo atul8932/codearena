@@ -126,6 +126,37 @@ const features = [
   { icon: '👁️', title: 'Spectator Mode',     desc: 'Watch live battles without playing.' },
 ];
 
+// ─── DecryptedText Component ───────────────────────────────────────────────────
+function DecryptedText({ text, speed = 40, className, style }) {
+  const [displayText, setDisplayText] = useState('');
+  
+  useEffect(() => {
+    let i = 0;
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*';
+    
+    const interval = setInterval(() => {
+      setDisplayText(prev => {
+        if (i >= text.length) {
+          clearInterval(interval);
+          return text;
+        }
+        
+        let result = text.substring(0, i);
+        for (let j = i; j < text.length; j++) {
+          if (text[j] === ' ') result += ' ';
+          else result += chars[Math.floor(Math.random() * chars.length)];
+        }
+        return result;
+      });
+      i += 1/3; // Controls how fast it settles
+    }, speed);
+    
+    return () => clearInterval(interval);
+  }, [text, speed]);
+
+  return <span className={className} style={style}>{displayText}</span>;
+}
+
 // ─── LandingPage ─────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -205,17 +236,16 @@ export default function LandingPage() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight drop-shadow-lg" 
                 style={{ 
-                  background: 'linear-gradient(to right, var(--neon-blue), var(--neon-purple), var(--neon-pink))',
+                  backgroundImage: 'linear-gradient(to right, var(--neon-blue), var(--neon-purple), var(--neon-pink))',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',
-                  color: 'transparent'
                 }}>
-              WELCOME TO CODEARENA
+              <DecryptedText text="WELCOME TO CODEARENA" />
             </h1>
             <p className="text-xs sm:text-sm mt-1 font-cyber tracking-widest uppercase flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
-              <span className="w-2 h-2 rounded-full animate-pulse bg-neon-pink shadow-[0_0_8px_var(--neon-pink)]"></span>
-              Real-Time Multiplayer Coding Battles
+              <span className="w-2 h-2 rounded-full animate-pulse bg-neon-pink shadow-[0_0_8px_var(--neon-pink)] shrink-0"></span>
+              <DecryptedText text="Real-Time Multiplayer Coding Battles" speed={30} />
             </p>
           </div>
           <div className="status-online text-xs">ARENA ONLINE</div>
