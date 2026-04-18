@@ -140,7 +140,17 @@ export default function LandingPage() {
   const [isConnecting, setIsConnecting] = useState(false);
   const { resetAll } = useGameStore();
 
+  const [publicRooms, setPublicRooms] = useState([]);
+
   useEffect(() => { resetAll(); }, []);
+
+  // Fetch public scheduled rooms
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'}/api/room`)
+      .then(r => r.json())
+      .then(d => { if (d.publicRooms) setPublicRooms(d.publicRooms); })
+      .catch(console.error);
+  }, []);
 
   // Pre-fill name from Firebase auth
   useEffect(() => {
@@ -193,8 +203,20 @@ export default function LandingPage() {
         <div className="px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between"
           style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text)' }}>Welcome to CodeArena</h1>
-            <p className="text-xs sm:text-sm mt-0.5" style={{ color: 'var(--accent)' }}>Real-Time Multiplayer Coding Battles</p>
+            <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight drop-shadow-lg" 
+                style={{ 
+                  background: 'linear-gradient(to right, var(--neon-blue), var(--neon-purple), var(--neon-pink))',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  color: 'transparent'
+                }}>
+              WELCOME TO CODEARENA
+            </h1>
+            <p className="text-xs sm:text-sm mt-1 font-cyber tracking-widest uppercase flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+              <span className="w-2 h-2 rounded-full animate-pulse bg-neon-pink shadow-[0_0_8px_var(--neon-pink)]"></span>
+              Real-Time Multiplayer Coding Battles
+            </p>
           </div>
           <div className="status-online text-xs">ARENA ONLINE</div>
         </div>
@@ -236,6 +258,40 @@ export default function LandingPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Scheduled Global Battles */}
+                {publicRooms.length > 0 && (
+                  <div className="max-w-4xl mx-auto mb-16">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-xl">⚔️</span>
+                      <h3 className="font-bold text-lg text-neon-blue">Scheduled Global Battles</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {publicRooms.map(r => {
+                        const startsIn = Math.max(0, Math.floor((r.scheduledStartTime - Date.now()) / 60000));
+                        return (
+                          <div key={r.id} className="card border border-neon-blue/30 bg-neon-blue/5">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h4 className="font-bold text-slate-200">{r.problem?.title || 'Unknown Problem'}</h4>
+                                <div className="text-xs text-slate-400 mt-1">Room ID: {r.id}</div>
+                              </div>
+                              <span className="badge badge-green text-xs">Public</span>
+                            </div>
+                            <div className="flex justify-between items-center mt-4">
+                              <div className="text-xs text-neon-pink font-bold">
+                                {startsIn > 0 ? `Starts in ${startsIn} mins` : 'Starting soon!'}
+                              </div>
+                              <button onClick={() => { setRoomId(r.id); setMode('join'); }} className="btn-primary text-xs py-1.5 px-4">
+                                Join Battle
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Features */}
                 <div className="max-w-5xl mx-auto">

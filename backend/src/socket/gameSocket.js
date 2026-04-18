@@ -744,4 +744,39 @@ function sanitizeCode(code) {
     .slice(0, 50_000); // max code length
 }
 
-module.exports = { initGameSocket };
+async function triggerScheduledGame(io, roomId) {
+  try {
+    const { getRoom, updateRoom } = require('../services/firebase');
+    const room = await getRoom(roomId);
+    if (!room || room.state !== 'lobby') return;
+
+    await updateRoom(roomId, { state: 'countdown' });
+    io.to(roomId).emit('gameCountdown', { problem: sanitizeProblem(room.problem) });
+
+    let count = 3;
+    const cdInterval = setInterval(async () => {
+      if (count > 0) {
+        io.to(roomId).emit('countdownTick', { count });
+        count--;
+      } else {
+        clearInterval(cdInterval);
+
+        const startTime = Date.now();
+        await updateRoom(roomId, { state: 'battle', startTime });
+
+        io.to(roomId).emit('gameStarted', {
+          startTime,
+          problem: sanitizeProblem(room.problem),
+          duration: room.duration || 1200,
+        });
+
+        startGameTimer(io, roomId, room.duration || 1200);
+        console.log(`⚔️ Scheduled Game started in room ${roomId}`);
+      }
+    }, 1000);
+  } catch (err) {
+    console.error('triggerScheduledGame error:', err);
+  }
+}
+
+module.exports = { initGameSocket, triggerScheduledGame };

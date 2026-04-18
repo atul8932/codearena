@@ -589,6 +589,7 @@ function ProblemsSection({ adminKey, toast }) {
                             ))}
                           </div>
                         </div>
+
                         <div>
                           <span className="text-slate-500">LANGUAGES</span>
                           <div className="flex gap-2 mt-1">
@@ -597,6 +598,9 @@ function ProblemsSection({ adminKey, toast }) {
                             ))}
                           </div>
                         </div>
+
+                        {/* Scheduling UI */}
+                        <ScheduleRoomForm problemId={p.id} adminKey={adminKey} toast={toast} />
                       </div>
                     )}
                   </div>
@@ -606,6 +610,59 @@ function ProblemsSection({ adminKey, toast }) {
           </motion.div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// Sub-component for the scheduling form to keep state clean
+function ScheduleRoomForm({ problemId, adminKey, toast }) {
+  const [startTime, setStartTime] = useState('');
+  const [durationMins, setDurationMins] = useState(30);
+  const [maxPlayers, setMaxPlayers] = useState(100);
+  const [scheduling, setScheduling] = useState(false);
+
+  // Set default time to 5 mins from now
+  useEffect(() => {
+    const d = new Date(Date.now() + 5 * 60000);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    setStartTime(d.toISOString().slice(0, 16));
+  }, []);
+
+  const handleSchedule = async (e) => {
+    e.stopPropagation(); // prevent collapsing the parent
+    if (!startTime) return toast('Select a valid time', 'error');
+    setScheduling(true);
+    try {
+      const res = await api('/schedule-room', adminKey, {
+        method: 'POST',
+        body: JSON.stringify({ problemId, startTime, durationMins, maxPlayers })
+      });
+      toast(`✅ Scheduled! Room ID: ${res.roomId}`, 'success');
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setScheduling(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 p-3 border border-neon-blue/30 rounded bg-neon-blue/5" onClick={(e) => e.stopPropagation()}>
+      <p className="text-neon-blue font-bold mb-2">⏱️ Schedule Global Battle</p>
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label className="text-xs text-slate-400 block mb-1">START TIME</label>
+          <input type="datetime-local" className="input-cyber w-full py-1 text-xs" 
+            value={startTime} onChange={e => setStartTime(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-slate-400 block mb-1">DURATION (MINS)</label>
+          <input type="number" className="input-cyber w-full py-1 text-xs" 
+            value={durationMins} onChange={e => setDurationMins(e.target.value)} min="5" max="120" />
+        </div>
+      </div>
+      <button className="btn-primary w-full py-1.5 text-xs" onClick={handleSchedule} disabled={scheduling}>
+        {scheduling ? 'Scheduling...' : 'Create Scheduled Room'}
+      </button>
     </div>
   );
 }

@@ -21,8 +21,14 @@ router.get('/:id', async (req, res) => {
 
 // GET /api/room — list non-private rooms (public lobby)
 router.get('/', async (req, res) => {
-  // For MVP this returns a static list; extend with Firestore query in production
-  res.json({ message: 'Use Socket.IO to create/join rooms', problems: PROBLEMS.length });
+  try {
+    const { getAllRooms } = require('../services/firebase');
+    const rooms = await getAllRooms();
+    const publicRooms = rooms.filter(r => !r.isPrivate && r.isScheduled && r.state === 'lobby');
+    res.json({ publicRooms });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 module.exports = router;

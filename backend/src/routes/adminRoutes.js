@@ -262,6 +262,63 @@ router.post('/broadcast', requireAdmin, async (req, res) => {
   }
 });
 
+// POST /api/admin/schedule-room  — schedule a public room
+router.post('/schedule-room', requireAdmin, async (req, res) => {
+  try {
+    const { problemId, startTime, durationMins, maxPlayers } = req.body;
+    const problem = PROBLEMS.find(p => p.id === problemId);
+    if (!problem) return res.status(404).json({ error: 'Problem not found' });
+
+    const roomId = nanoid(8).toUpperCase();
+    const roomData = {
+      id: roomId,
+      isPrivate: false,
+      isScheduled: true,
+      scheduledStartTime: new Date(startTime).getTime(),
+      difficulty: problem.difficulty,
+      maxPlayers: parseInt(maxPlayers) || 100,
+      duration: (parseInt(durationMins) || 30) * 60,
+      players: {},
+      state: 'lobby',
+      problem: problem,
+      firstBloodId: null,
+      anonymousMode: false,
+      createdAt: Date.now(),
+      createdByAdmin: true
+    };
+
+    const { createRoom, addNotification } = require('../services/firebase');
+    await createRoom(roomId, roomData);
+
+    // Schedule the countdown start
+    const delay = roomData.scheduledStartTime - Date.now();
+    if (delay > 0) {
+      setTimeout(async () => {
+        const { triggerScheduledGame } = require('../socket/gameSocket');
+        if (_io) {
+          await triggerScheduledGame(_io, roomId);
+        }
+      }, delay);
+    }
+
+    // Push notification
+    await addNotification({
+      id: nanoid(8),
+      title: 'Global Battle Scheduled!',
+      message: `A new battle for ${problem.title} starts at ${new Date(startTime).toLocaleTimeString()}! Join Room: ${roomId}`,
+      timestamp: Date.now()
+    });
+
+    if (_io) {
+      _io.emit('commentary', { message: `📢 [Admin] Scheduled battle ${roomId} for ${problem.title}!` });
+    }
+
+    res.json({ ok: true, roomId, message: 'Scheduled room created successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/admin/broadcast/log
 router.get('/broadcast/log', requireAdmin, (req, res) => {
   res.json({ log: broadcastLog });

@@ -262,6 +262,31 @@ A subsequence is a sequence derived from another sequence by deleting some eleme
       java: `import java.util.*;\npublic class Solution{public static void main(String[] a){Scanner sc=new Scanner(System.in);String s1=sc.next(),s2=sc.next();int m=s1.length(),n=s2.length();int[][]dp=new int[m+1][n+1];for(int i=1;i<=m;i++)for(int j=1;j<=n;j++){if(s1.charAt(i-1)==s2.charAt(j-1))dp[i][j]=dp[i-1][j-1]+1;else dp[i][j]=Math.max(dp[i-1][j],dp[i][j-1]);}System.out.println(dp[m][n]);}}\n`,
     },
   },
+  {
+    id: 'p006',
+    title: 'Valid Palindrome',
+    difficulty: 'Easy',
+    tags: ['String', 'Two Pointers'],
+    description: `Given a string \`s\`, return \`true\` if it is a palindrome, or \`false\` otherwise.
+
+A string is a palindrome when it reads the same backward as forward.
+Print \`true\` or \`false\`.`,
+    constraints: ['1 ≤ s.length ≤ 10⁵', 's consists only of printable ASCII characters.'],
+    sampleTestCases: [
+      { input: 'racecar', output: 'true' },
+      { input: 'hello', output: 'false' },
+    ],
+    hiddenTestCases: [
+      { input: 'A man a plan a canal Panama', output: 'false' }, 
+      { input: 'abccba', output: 'true' },
+    ],
+    starterCode: {
+      python: `s = input()\nprint('true' if s == s[::-1] else 'false')\n`,
+      javascript: `const s=require('fs').readFileSync('/dev/stdin','utf8').trim();\nconsole.log(s===s.split('').reverse().join('')?'true':'false');\n`,
+      cpp: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){string s,r;cin>>s;r=s;reverse(r.begin(),r.end());cout<<(s==r?"true":"false");}\n`,
+      java: `import java.util.*;\npublic class Solution{public static void main(String[] a){Scanner sc=new Scanner(System.in);String s=sc.next();String r=new StringBuilder(s).reverse().toString();System.out.println(s.equals(r)?"true":"false");}}\n`,
+    }
+  }
 ];
 
 /**
