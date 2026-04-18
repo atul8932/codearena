@@ -327,9 +327,9 @@ export default function BattlePage() {
           <TimerDisplay seconds={timer} />
           <span className="text-xs font-mono hidden sm:block" style={{ color:'var(--text-dim)' }}>{roomId}</span>
           <button onClick={() => { localStorage.removeItem('codearena_roomId'); socket.emit('leaveRoom', { roomId }); navigate('/'); }}
-            className="btn-ghost text-xs px-2 py-1" style={{ color: 'var(--accent)' }}>
-            <span className="hidden sm:inline">Leave Battle</span>
-            <span className="sm:hidden">Exit</span>
+            className="btn-primary !bg-red-500/20 !border-red-500 !text-red-500 hover:!bg-red-500/30 text-xs px-3 py-1">
+            <span className="hidden sm:inline">🚪 Exit Battle</span>
+            <span className="sm:hidden">🚪 Exit</span>
           </button>
         </div>
       </div>
