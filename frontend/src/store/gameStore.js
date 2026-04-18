@@ -50,6 +50,10 @@ const useGameStore = create((set, get) => ({
   finalLeaderboard: [],
   setFinalLeaderboard: (lb) => set({ finalLeaderboard: lb }),
 
+  // ─── Chat ──────────────────────────────────────────────────────────────
+  chatMessages: [],
+  addChatMessage: (msg) => set((state) => ({ chatMessages: [...state.chatMessages, msg].slice(-100) })),
+
   // ─── Code State ────────────────────────────────────────────────────────
   code: '',
   setCode: (code) => set({ code }),
@@ -104,6 +108,7 @@ const useGameStore = create((set, get) => ({
       firstBloodPlayerId: null,
       winner: null,
       finalLeaderboard: [],
+      chatMessages: [],
       code: '',
       submissionResult: null,
       runResult: null,
@@ -129,6 +134,7 @@ const useGameStore = create((set, get) => ({
       firstBloodPlayerId: null,
       winner: null,
       finalLeaderboard: [],
+      chatMessages: [],
       code: '',
       language: 'python',
       submissionResult: null,

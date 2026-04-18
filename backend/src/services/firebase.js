@@ -71,6 +71,19 @@ async function deleteRoom(roomId) {
   }
 }
 
+async function addNotification(notification) {
+  if (db) {
+    const docRef = db.collection('settings').doc('notifications');
+    await docRef.set({
+      list: admin.firestore.FieldValue.arrayUnion(notification)
+    }, { merge: true });
+  } else {
+    const list = memoryStore.get('global_notifications') || [];
+    list.push(notification);
+    memoryStore.set('global_notifications', list);
+  }
+}
+
 async function getAllRooms() {
   if (db) {
     const snap = await db.collection('rooms').get();
@@ -154,4 +167,4 @@ async function getUserProfile(uid) {
   return { stats, activity, battles };
 }
 
-module.exports = { initFirebase, createRoom, getRoom, updateRoom, deleteRoom, getAllRooms, saveUserBattle, getUserProfile };
+module.exports = { initFirebase, createRoom, getRoom, updateRoom, deleteRoom, getAllRooms, saveUserBattle, getUserProfile, addNotification };

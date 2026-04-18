@@ -242,12 +242,38 @@ export default function BattlePage() {
   const { player, players, problem, leaderboard, timer, gamePhase, anonymousMode,
     code, setCode, language, setLanguage, submissionResult, runResult,
     isSubmitting, isRunning, typingPlayers, commentary, isFrozen,
-    setIsSubmitting, setIsRunning } = useGameStore();
+    setIsSubmitting, setIsRunning, chatMessages } = useGameStore();
 
   const typingTimer = useRef(null);
+  const chatBottomRef = useRef(null);
   const [mobileTab, setMobileTab] = useState('editor');
+  const [chatInput, setChatInput] = useState('');
+
+  // Auto scroll chat
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  const handleSendChat = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    socket.emit('chatMessage', { roomId, message: chatInput.trim() });
+    setChatInput('');
+  };
 
   const isSpectator = !!(player && players[player.id]?.isSpectator);
+  const activePlayers = Object.values(players).filter(p => !p.isSpectator);
+
+  const [liveCodes, setLiveCodes] = useState({});
+  const [spectatingTargetId, setSpectatingTargetId] = useState(activePlayers[0]?.id || null);
+
+  useEffect(() => {
+    const handleLiveCode = ({ playerId, code, language }) => {
+      setLiveCodes(prev => ({ ...prev, [playerId]: { code, language } }));
+    };
+    socket.on('liveCodeUpdate', handleLiveCode);
+    return () => socket.off('liveCodeUpdate', handleLiveCode);
+  }, []);
 
   useEffect(() => {
     if (!player||!problem) navigate('/');
@@ -259,11 +285,12 @@ export default function BattlePage() {
   const handleCodeChange = useCallback((val) => {
     if (isFrozen || isSpectator) return;
     setCode(val||'');
+    socket.emit('codeUpdate', { roomId, code: val, language });
     socket.emit('typing',{ roomId, isTyping:true });
     clearTimeout(typingTimer.current);
     typingTimer.current = setTimeout(()=>socket.emit('typing',{ roomId, isTyping:false }), 1500);
     socket.emit('codeProgress',{ roomId, progress: Math.min(100, Math.round(((val||'').split('\n').length/20)*100)) });
-  }, [roomId, isFrozen, isSpectator]);
+  }, [roomId, isFrozen, isSpectator, language]);
 
   const handleLangChange = (lang) => { setLanguage(lang); setCode(problem?.starterCode?.[lang]||''); };
   const handleRun = () => {
@@ -299,6 +326,11 @@ export default function BattlePage() {
         <div className="flex items-center gap-3 shrink-0">
           <TimerDisplay seconds={timer} />
           <span className="text-xs font-mono hidden sm:block" style={{ color:'var(--text-dim)' }}>{roomId}</span>
+          <button onClick={() => { localStorage.removeItem('codearena_roomId'); socket.emit('leaveRoom', { roomId }); navigate('/'); }}
+            className="btn-ghost text-xs px-2 py-1" style={{ color: 'var(--accent)' }}>
+            <span className="hidden sm:inline">Leave Battle</span>
+            <span className="sm:hidden">Exit</span>
+          </button>
         </div>
       </div>
 
@@ -362,17 +394,30 @@ export default function BattlePage() {
               {/* Toolbar */}
               <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 shrink-0"
                 style={{ borderBottom:'1px solid var(--border)', background:'var(--bg-2)' }}>
-                <div className="flex gap-1">
-                  {LANGUAGES.map((l)=>(
-                    <button key={l.value} id={`lang-${l.value}`} onClick={()=>handleLangChange(l.value)}
-                      className="px-2 sm:px-3 py-1.5 rounded text-xs font-mono transition-all"
-                      style={language===l.value
-                        ? { background:'var(--accent)', color:'#fff', border:'1px solid transparent' }
-                        : { color:'var(--text-dim)', border:'1px solid transparent' }}>
-                      <span className="sm:hidden">{l.icon}</span>
-                      <span className="hidden sm:inline">{l.icon} {l.label}</span>
-                    </button>
-                  ))}
+                <div className="flex gap-1 items-center">
+                  {!isSpectator ? (
+                    LANGUAGES.map((l)=>(
+                      <button key={l.value} id={`lang-${l.value}`} onClick={()=>handleLangChange(l.value)}
+                        className="px-2 sm:px-3 py-1.5 rounded text-xs font-mono transition-all"
+                        style={language===l.value
+                          ? { background:'var(--accent)', color:'#fff', border:'1px solid transparent' }
+                          : { color:'var(--text-dim)', border:'1px solid transparent' }}>
+                        <span className="sm:hidden">{l.icon}</span>
+                        <span className="hidden sm:inline">{l.icon} {l.label}</span>
+                      </button>
+                    ))
+                  ) : (
+                    activePlayers.length > 0 && (
+                      <div className="flex items-center gap-2 px-2">
+                        <span className="text-xs font-mono" style={{ color:'var(--text-dim)' }}>WATCHING:</span>
+                        <select value={spectatingTargetId||''} onChange={(e)=>setSpectatingTargetId(e.target.value)}
+                          className="text-xs font-semibold rounded px-2 py-1 outline-none"
+                          style={{ background:'var(--surface)', color:'var(--blue)', border:'1px solid var(--border)' }}>
+                          {activePlayers.map((p)=><option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </div>
+                    )
+                  )}
                 </div>
                 <div className="flex-1" />
                 <TypingIndicators typingPlayers={typingPlayers} players={players} myId={player?.id} />
@@ -393,11 +438,14 @@ export default function BattlePage() {
                     <div className="text-5xl animate-pulse">❄️</div>
                   </div>
                 )}
-                <Editor height="100%" language={monacoLang} value={code} onChange={handleCodeChange} theme="vs-dark"
+                <Editor height="100%"
+                  language={isSpectator ? (liveCodes[spectatingTargetId]?.language || 'python') : monacoLang}
+                  value={isSpectator ? (liveCodes[spectatingTargetId]?.code || '/* Waiting for player to type... */') : code}
+                  onChange={handleCodeChange} theme="vs-dark"
                   options={{ fontSize:13, fontFamily:'"JetBrains Mono",monospace', fontLigatures:true,
                     minimap:{enabled:false}, scrollBeyondLastLine:false, lineNumbers:'on',
                     renderLineHighlight:'line', cursorBlinking:'smooth', cursorSmoothCaretAnimation:'on',
-                    automaticLayout:true, tabSize:4, wordWrap:'on', readOnly:isFrozen,
+                    automaticLayout:true, tabSize:4, wordWrap:'on', readOnly: isFrozen || isSpectator,
                     padding:{top:12,bottom:12}, lineHeight:1.6 }} />
               </div>
 
@@ -417,6 +465,37 @@ export default function BattlePage() {
             <div className="card flex-1" style={{ minHeight:200 }}>
               <TestCasePanel submissionResult={submissionResult} runResult={runResult}
                 isRunning={isRunning} isSubmitting={isSubmitting} />
+            </div>
+
+            {/* Room Chat */}
+            <div className="card flex flex-col" style={{ height: 250 }}>
+              <div className="text-xs font-bold mb-2 pb-2" style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>Room Chat</div>
+              <div className="flex-1 overflow-y-auto space-y-2 mb-2 pr-1 custom-scrollbar">
+                {chatMessages.length === 0 ? (
+                  <div className="text-xs text-center mt-4" style={{ color: 'var(--text-dim)' }}>No messages yet.</div>
+                ) : (
+                  chatMessages.map((msg) => (
+                    <div key={msg.id} className="text-xs">
+                      <span className="font-bold" style={{ color: msg.playerId === player?.id ? 'var(--accent)' : 'var(--blue)' }}>
+                        {msg.playerName}:{' '}
+                      </span>
+                      <span style={{ color: 'var(--text)' }}>{msg.message}</span>
+                    </div>
+                  ))
+                )}
+                <div ref={chatBottomRef} />
+              </div>
+              <form onSubmit={handleSendChat} className="flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Type a message..."
+                  className="input-cyber flex-1 px-2 py-1 text-xs"
+                  maxLength={200}
+                />
+                <button type="submit" className="btn-primary px-2 py-1 text-xs" disabled={!chatInput.trim()}>Send</button>
+              </form>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 const express = require('express');
 const os = require('os');
-const { getAllRooms, getRoom, updateRoom, deleteRoom } = require('../services/firebase');
+const { getAllRooms, getRoom, updateRoom, deleteRoom, addNotification } = require('../services/firebase');
+const { nanoid } = require('nanoid');
 const { PROBLEMS } = require('../data/problems');
 
 const router = express.Router();
@@ -264,6 +265,26 @@ router.post('/broadcast', requireAdmin, async (req, res) => {
 // GET /api/admin/broadcast/log
 router.get('/broadcast/log', requireAdmin, (req, res) => {
   res.json({ log: broadcastLog });
+});
+
+// POST /api/admin/notification  — send global notification to bell icon
+router.post('/notification', requireAdmin, async (req, res) => {
+  try {
+    const { title, message } = req.body;
+    if (!title || !message) return res.status(400).json({ error: 'title and message required' });
+
+    const notification = {
+      id: nanoid(8),
+      title,
+      message,
+      timestamp: Date.now()
+    };
+
+    await addNotification(notification);
+    res.json({ ok: true, message: 'Notification pushed to users' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── PROBLEMS ─────────────────────────────────────────────────────────────────

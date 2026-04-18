@@ -46,7 +46,7 @@ function calcScore(passedPct, elapsedSeconds) {
 }
 
 // ─── Active game timers per room ──────────────────────────────────────────────
-const gameTimers = new Map(); // roomId → { interval, startTime }
+const roomTimersState = new Map(); // roomId -> { remaining, elapsed, isFrozen, interval }
 
 // ─── Rate limiting: last submission timestamp per player ──────────────────────
 const lastSubmission = new Map(); // socketId → timestamp
@@ -63,7 +63,7 @@ function initGameSocket(io) {
     console.log(`🔌 Client connected: ${socket.id}`);
 
     // ── CREATE ROOM ────────────────────────────────────────────────────────
-    socket.on('createRoom', async ({ playerName, isPrivate = false, difficulty = null, uid = null }) => {
+    socket.on('createRoom', async ({ playerName, isPrivate = false, difficulty = null, timeLimit = 20, maxPlayers = 8, uid = null }) => {
       try {
         const roomId = nanoid(8).toUpperCase();
         const player = {
@@ -88,7 +88,8 @@ function initGameSocket(io) {
           state: 'lobby',     // lobby | countdown | battle | finished
           problem: null,
           startTime: null,
-          duration: 20 * 60,  // 20 minutes in seconds
+          duration: parseInt(timeLimit) * 60,  // converts minutes to seconds
+          maxPlayers: parseInt(maxPlayers),
           firstBloodId: null,
           anonymousMode: false,
           createdAt: Date.now(),
@@ -112,31 +113,54 @@ function initGameSocket(io) {
       try {
         const room = await getRoom(roomId);
         if (!room) return socket.emit('error', { message: 'Room not found' });
-        if (room.state !== 'lobby' && !spectate) {
+
+        // Reconnect logic
+        let reconnectingPlayer = null;
+        let oldSocketId = null;
+        if (uid) {
+          const entry = Object.entries(room.players || {}).find(([id, p]) => p.uid === uid && p.isOffline);
+          if (entry) {
+            oldSocketId = entry[0];
+            reconnectingPlayer = entry[1];
+          }
+        }
+
+        if (room.state !== 'lobby' && !spectate && !reconnectingPlayer) {
           return socket.emit('error', { message: 'Game already in progress. Join as spectator?' });
         }
 
-        const playerCount = Object.keys(room.players || {}).length;
-        if (playerCount >= 8 && !spectate) {
-          return socket.emit('error', { message: 'Room is full (max 8 players)' });
+        const playerCount = Object.keys(room.players || {}).filter(k => k !== oldSocketId).length;
+        const limit = room.maxPlayers || 8;
+        if (playerCount >= limit && !spectate && !reconnectingPlayer) {
+          return socket.emit('error', { message: `Room is full (max ${limit} players)` });
         }
 
-        const player = {
-          id: socket.id,
-          name: playerName || `Player_${socket.id.slice(0, 4)}`,
-          uid: uid || null,
-          isHost: false,
-          isReady: false,
-          isSpectator: spectate,
-          score: 0,
-          status: spectate ? 'spectating' : 'waiting',
-          solvedAt: null,
-          attempts: 0,
-          progress: 0,
-          isTyping: false,
-        };
+        let player;
+        const updatedPlayers = { ...(room.players || {}) };
 
-        const updatedPlayers = { ...(room.players || {}), [socket.id]: player };
+        if (reconnectingPlayer) {
+          player = { ...reconnectingPlayer, id: socket.id, isOffline: false };
+          delete updatedPlayers[oldSocketId];
+          updatedPlayers[socket.id] = player;
+          io.to(roomId).emit('commentary', { message: `⚡ ${player.name} reconnected!` });
+        } else {
+          player = {
+            id: socket.id,
+            name: playerName || `Player_${socket.id.slice(0, 4)}`,
+            uid: uid || null,
+            isHost: false,
+            isReady: false,
+            isSpectator: spectate,
+            score: 0,
+            status: spectate ? 'spectating' : 'waiting',
+            solvedAt: null,
+            attempts: 0,
+            progress: 0,
+            isTyping: false,
+          };
+          updatedPlayers[socket.id] = player;
+        }
+
         await updateRoom(roomId, { players: updatedPlayers });
 
         socket.join(roomId);
@@ -407,6 +431,34 @@ function initGameSocket(io) {
       });
     });
 
+    // Broadcast actual code for spectator mode
+    socket.on('codeUpdate', ({ roomId, code, language }) => {
+      socket.to(roomId).emit('liveCodeUpdate', {
+        playerId: socket.id,
+        code,
+        language
+      });
+    });
+
+    // ── CHAT ──────────────────────────────────────────────────────────────
+    socket.on('chatMessage', async ({ roomId, message }) => {
+      try {
+        const room = await getRoom(roomId);
+        if (!room) return;
+        const player = room.players[socket.id];
+        if (!player) return;
+        io.to(roomId).emit('chatMessage', {
+          id: nanoid(6),
+          playerId: socket.id,
+          playerName: player.name,
+          message: message.slice(0, 200), // Limit length
+          timestamp: Date.now()
+        });
+      } catch (err) {
+        console.error('chatMessage error:', err);
+      }
+    });
+
     // ── POWER-UP ──────────────────────────────────────────────────────────
     socket.on('usePowerUp', async ({ roomId, type, targetId }) => {
       try {
@@ -418,18 +470,23 @@ function initGameSocket(io) {
 
         switch (type) {
           case 'freeze': {
-            // Freeze target player for 5 seconds
-            if (!room.players[targetId]) return;
-            frozenPlayers.add(targetId);
-            io.to(targetId).emit('powerUpEffect', {
-              type: 'freeze',
-              duration: 5000,
-              message: `❄️ You've been FROZEN by ${player.name}!`,
-            });
-            io.to(roomId).emit('commentary', {
-              message: `🥶 ${player.name} freezes ${room.players[targetId].name}'s keyboard!`,
-            });
-            setTimeout(() => frozenPlayers.delete(targetId), 5000);
+            // Freeze the battle timer for 10 seconds
+            const state = roomTimersState.get(roomId);
+            if (state && !state.isFrozen) {
+              state.isFrozen = true;
+              io.to(roomId).emit('powerUpEffect', {
+                type: 'freeze',
+                duration: 10000,
+                message: `❄️ MATCH TIMER FROZEN BY ${player.name.toUpperCase()}!`,
+              });
+              io.to(roomId).emit('commentary', {
+                message: `🥶 TIME STANDS STILL! ${player.name} froze the clock!`,
+              });
+              setTimeout(() => {
+                const s = roomTimersState.get(roomId);
+                if (s) s.isFrozen = false;
+              }, 10000);
+            }
             break;
           }
           case 'hint': {
@@ -512,9 +569,16 @@ function initGameSocket(io) {
 
         const players = { ...(room.players || {}) };
         const leaving = players[socket.id];
-        delete players[socket.id];
+        
+        if (room.state === 'battle' && leaving) {
+          // Do not delete player, mark as offline so they can rejoin
+          players[socket.id].isOffline = true;
+          io.to(roomId).emit('commentary', { message: `🔌 ${leaving.name} disconnected (can rejoin)` });
+        } else {
+          delete players[socket.id];
+        }
 
-        const remaining = Object.values(players).filter((p) => !p.isSpectator);
+        const remaining = Object.values(players).filter((p) => !p.isSpectator && !p.isOffline);
 
         if (remaining.length === 0) {
           // Empty room — clean up
@@ -523,10 +587,12 @@ function initGameSocket(io) {
           console.log(`🗑️  Room ${roomId} deleted (empty)`);
         } else {
           // Transfer host if needed
-          if (leaving?.isHost) {
+          if (leaving?.isHost && !players[socket.id]?.isOffline) {
             const newHost = remaining[0];
-            players[newHost.id].isHost = true;
-            io.to(newHost.id).emit('hostTransferred', { message: "You're now the host!" });
+            if (newHost) {
+              players[newHost.id].isHost = true;
+              io.to(newHost.id).emit('hostTransferred', { message: "You're now the host!" });
+            }
           }
           await updateRoom(roomId, { players });
           io.to(roomId).emit('playerLeft', {
@@ -534,9 +600,11 @@ function initGameSocket(io) {
             playerName: leaving?.name,
             players,
           });
-          io.to(roomId).emit('commentary', {
-            message: `👋 ${leaving?.name || 'A player'} has left the arena.`,
-          });
+          if (!players[socket.id]?.isOffline) {
+            io.to(roomId).emit('commentary', {
+              message: `👋 ${leaving?.name || 'A player'} has left the arena.`,
+            });
+          }
         }
       } catch (err) {
         console.error('disconnect cleanup error:', err);
@@ -548,33 +616,45 @@ function initGameSocket(io) {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function startGameTimer(io, roomId, durationSeconds) {
-  const startTime = Date.now();
-  const interval = setInterval(async () => {
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    const remaining = durationSeconds - elapsed;
+  roomTimersState.set(roomId, { remaining: durationSeconds, elapsed: 0, isFrozen: false });
 
-    if (remaining <= 0) {
+  const interval = setInterval(async () => {
+    const state = roomTimersState.get(roomId);
+    if (!state) return clearInterval(interval);
+
+    if (state.isFrozen) {
+      // Skip decrementing timer while frozen
+      return;
+    }
+
+    state.elapsed += 1;
+    state.remaining -= 1;
+
+    if (state.remaining <= 0) {
       clearInterval(interval);
-      gameTimers.delete(roomId);
+      roomTimersState.delete(roomId);
       await endGame(io, roomId);
     } else {
-      io.to(roomId).emit('timerTick', { remaining, elapsed });
+      io.to(roomId).emit('timerTick', { remaining: state.remaining, elapsed: state.elapsed });
 
       // Periodic commentary
-      if (elapsed % 60 === 0 && elapsed > 0) {
+      if (state.elapsed % 60 === 0 && state.elapsed > 0) {
         io.to(roomId).emit('commentary', { message: pickRandom(COMMENTARY.general) });
       }
     }
   }, 1000);
-  gameTimers.set(roomId, interval);
+
+  if (roomTimersState.has(roomId)) {
+    roomTimersState.get(roomId).interval = interval;
+  }
 }
 
 function clearGameTimer(roomId) {
-  const timer = gameTimers.get(roomId);
-  if (timer) {
-    clearInterval(timer);
-    gameTimers.delete(roomId);
+  const state = roomTimersState.get(roomId);
+  if (state && state.interval) {
+    clearInterval(state.interval);
   }
+  roomTimersState.delete(roomId);
 }
 
 async function endGame(io, roomId) {
@@ -596,16 +676,18 @@ async function endGame(io, roomId) {
     for (const p of leaderboard) {
       if (p.uid) {
         const timeTaken = p.solvedAt ? Math.floor((p.solvedAt - startTime) / 1000) : null;
+        const awardedScore = room.isPrivate ? (p.score || 0) : 0; // Public rooms only increase streak, not points
         saveUserBattle(p.uid, {
           roomId,
           rank:         p.rank,
           totalPlayers,
-          score:        p.score || 0,
+          score:        awardedScore,
           status:       p.status || 'coding',
           problemTitle: room.problem?.title || 'Unknown',
           language:     p.language || 'unknown',
           timeTaken,
           date:         dateKey,
+          isPrivate:    room.isPrivate || false,
         }).catch(console.error);
       }
     }

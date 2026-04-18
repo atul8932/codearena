@@ -32,6 +32,7 @@ export function useGame() {
 
     // ── Room events ─────────────────────────────────────────────────────
     const onRoomCreated = ({ roomId, player: p, room: r }) => {
+      localStorage.setItem('codearena_roomId', roomId);
       setPlayer(p);
       setRoom(r);
       setPlayers(r.players || {});
@@ -41,6 +42,7 @@ export function useGame() {
     off('roomCreated', onRoomCreated);
 
     const onRoomJoined = ({ player: p, room: r }) => {
+      localStorage.setItem('codearena_roomId', r.id);
       setPlayer(p);
       setRoom(r);
       setPlayers(r.players || {});
@@ -165,9 +167,12 @@ export function useGame() {
     const onProgressUpdate = ({ playerId, progress }) => updatePlayerInRoom(playerId, { progress });
     off('progressUpdate', onProgressUpdate);
 
-    // ── Commentary ───────────────────────────────────────────────────────
+    // ── Commentary & Chat ────────────────────────────────────────────────
     const onCommentary = ({ message }) => addCommentary(message);
     off('commentary', onCommentary);
+
+    const onChatMessage = (msg) => useGameStore.getState().addChatMessage(msg);
+    off('chatMessage', onChatMessage);
 
     // ── Power-ups ────────────────────────────────────────────────────────
     const onPowerUpEffect = ({ type, message, duration }) => {
@@ -191,6 +196,7 @@ export function useGame() {
 
     // ── Game end ─────────────────────────────────────────────────────────
     const onGameEnded = ({ leaderboard, winner, message }) => {
+      localStorage.removeItem('codearena_roomId');
       setFinalLeaderboard(leaderboard);
       setWinner(winner);
       setGamePhase('result');

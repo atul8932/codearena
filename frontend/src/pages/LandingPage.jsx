@@ -5,11 +5,14 @@ import toast from 'react-hot-toast';
 import socket from '../services/socket';
 import useGameStore from '../store/gameStore';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../hooks/useNotifications';
 
 // ─── Shared Nav ──────────────────────────────────────────────────────────────
 export function TopNav({ right }) {
   const { user, logout } = useAuth() || {};
   const navigate = useNavigate();
+  const { notifications, unreadCount, markAsRead } = useNotifications();
+  const [showNotifs, setShowNotifs] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -35,9 +38,42 @@ export function TopNav({ right }) {
       {/* Right slot */}
       {right && right}
 
-      {/* User chip */}
+      {/* User chip & Notifications */}
       {user && (
         <div className="flex items-center gap-2 ml-2">
+          {/* Notifications */}
+          <div className="relative">
+            <button onClick={() => { setShowNotifs(!showNotifs); markAsRead(); }}
+              className="w-8 h-8 rounded-full flex items-center justify-center relative hover:bg-white/5 transition-colors"
+              title="Notifications">
+              🔔
+              {unreadCount > 0 && (
+                <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold text-white border border-black">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+            {showNotifs && (
+              <div className="absolute right-0 top-10 w-64 card p-0 overflow-hidden z-50 shadow-2xl" style={{ border: '1px solid var(--border)' }}>
+                <div className="p-3 font-bold text-xs" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}>Admin Notifications</div>
+                <div className="max-h-64 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-xs" style={{ color: 'var(--text-dim)' }}>No notifications yet</div>
+                  ) : (
+                    notifications.map(n => (
+                      <div key={n.id} className="p-3 text-xs" style={{ borderBottom: '1px solid var(--border)' }}>
+                        <div className="font-bold mb-1" style={{ color: 'var(--accent)' }}>{n.title}</div>
+                        <div style={{ color: 'var(--text)' }}>{n.message}</div>
+                        <div className="mt-1" style={{ fontSize: 9, color: 'var(--text-dim)' }}>
+                          {new Date(n.timestamp).toLocaleString()}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
           {/* Avatar — click to go to profile */}
           <button onClick={() => navigate('/profile')}
             className="flex items-center gap-2 rounded-lg px-2 py-1 transition-all"
@@ -95,6 +131,9 @@ export default function LandingPage() {
   const [playerName, setPlayerName] = useState('');
   const [roomId, setRoomId] = useState('');
   const [difficulty, setDifficulty] = useState('');
+  const [timeLimit, setTimeLimit] = useState('20');
+  const [maxPlayers, setMaxPlayers] = useState('8');
+  const [isPrivate, setIsPrivate] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const { resetAll } = useGameStore();
 
@@ -104,6 +143,19 @@ export default function LandingPage() {
   useEffect(() => {
     if (user?.displayName) setPlayerName(user.displayName.slice(0,20));
     else if (user?.email)  setPlayerName(user.email.split('@')[0].slice(0,20));
+  }, [user]);
+
+  // Auto Reconnect Logic
+  useEffect(() => {
+    const savedRoom = localStorage.getItem('codearena_roomId');
+    if (savedRoom) {
+      setRoomId(savedRoom);
+      const doEmit = () => {
+        socket.emit('joinRoom', { roomId: savedRoom, playerName: user?.displayName?.slice(0,20) || 'ReconnectingPlayer', uid: user?.uid || null });
+      };
+      if (socket.connected) doEmit();
+      else { socket.once('connect', doEmit); socket.connect(); }
+    }
   }, [user]);
 
   const handleConnect = () => {
@@ -118,7 +170,7 @@ export default function LandingPage() {
     setIsConnecting(true);
     const doEmit = () => {
       if (mode === 'create') {
-        socket.emit('createRoom', { playerName: name, isPrivate: false, difficulty: difficulty || null, uid });
+        socket.emit('createRoom', { playerName: name, isPrivate, difficulty: difficulty || null, timeLimit: parseInt(timeLimit), maxPlayers: parseInt(maxPlayers), uid });
       } else if (mode === 'spectate') {
         socket.emit('joinRoom', { roomId: roomId.trim().toUpperCase(), playerName: name, spectate: true, uid });
       } else {
@@ -251,16 +303,42 @@ export default function LandingPage() {
                     )}
 
                     {mode === 'create' && (
-                      <div>
-                        <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                          Difficulty <span style={{ color: 'var(--text-dim)' }}>(optional)</span>
-                        </label>
-                        <select id="difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="input-cyber">
-                          <option value="">Random</option>
-                          <option value="Easy">Easy</option>
-                          <option value="Medium">Medium</option>
-                          <option value="Hard">Hard</option>
-                        </select>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                            Difficulty <span style={{ color: 'var(--text-dim)' }}>(optional)</span>
+                          </label>
+                          <select id="difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="input-cyber">
+                            <option value="">Random</option>
+                            <option value="Easy">Easy</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Hard">Hard</option>
+                          </select>
+                        </div>
+                        <div className="flex gap-3">
+                          <div className="flex-1">
+                            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Time Limit</label>
+                            <select value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} className="input-cyber">
+                              <option value="5">5 Minutes</option>
+                              <option value="10">10 Minutes</option>
+                              <option value="20">20 Minutes</option>
+                              <option value="30">30 Minutes</option>
+                              <option value="60">1 Hour</option>
+                            </select>
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Max Players</label>
+                            <select value={maxPlayers} onChange={(e) => setMaxPlayers(e.target.value)} className="input-cyber">
+                              <option value="2">2 Players (Duel)</option>
+                              <option value="4">4 Players</option>
+                              <option value="8">8 Players</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <input type="checkbox" id="isPrivate" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} className="rounded" style={{ accentColor: 'var(--accent)' }} />
+                          <label htmlFor="isPrivate" className="text-xs text-white/70 cursor-pointer">Private Room (Hidden from public listings)</label>
+                        </div>
                       </div>
                     )}
 

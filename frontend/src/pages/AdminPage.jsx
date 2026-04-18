@@ -378,11 +378,16 @@ function RoomsSection({ adminKey, toast }) {
   );
 }
 
-// ─── SECTION: Broadcast ───────────────────────────────────────────────────────
+// ─── SECTION: Broadcast & Notifications ───────────────────────────────────────
 function BroadcastSection({ adminKey, toast }) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [log, setLog] = useState([]);
+
+  // Notifications
+  const [notifTitle, setNotifTitle] = useState('');
+  const [notifMessage, setNotifMessage] = useState('');
+  const [notifSending, setNotifSending] = useState(false);
 
   const loadLog = useCallback(async () => {
     try { const d = await api('/broadcast/log', adminKey); setLog(d.log); }
@@ -403,6 +408,18 @@ function BroadcastSection({ adminKey, toast }) {
     finally { setSending(false); }
   };
 
+  const sendNotification = async () => {
+    if (!notifTitle.trim() || !notifMessage.trim()) return;
+    setNotifSending(true);
+    try {
+      await api('/notification', adminKey, { method: 'POST', body: JSON.stringify({ title: notifTitle, message: notifMessage }) });
+      toast('🔔 Notification pushed to all users!', 'success');
+      setNotifTitle('');
+      setNotifMessage('');
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setNotifSending(false); }
+  };
+
   const presets = [
     '🔥 Server maintenance in 5 minutes — finish up!',
     '🏆 Tournament starting soon — prepare your code!',
@@ -413,38 +430,64 @@ function BroadcastSection({ adminKey, toast }) {
 
   return (
     <div className="space-y-6">
-      <h2 className="font-display text-lg font-bold text-neon-blue">📢 Broadcast</h2>
+      <h2 className="font-display text-lg font-bold text-neon-blue">📢 Broadcast & Alerts</h2>
 
-      <div className="card">
-        <p className="section-title">SEND TO ALL ROOMS</p>
-        <textarea value={message} onChange={(e) => setMessage(e.target.value)}
-          className="input-cyber resize-none h-24 w-full mb-3"
-          placeholder="Type a message to broadcast to all active rooms..." />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Toast Broadcast */}
+        <div className="card">
+          <p className="section-title">SEND TO ALL ROOMS (In-Game Toast)</p>
+          <textarea value={message} onChange={(e) => setMessage(e.target.value)}
+            className="input-cyber resize-none h-24 w-full mb-3"
+            placeholder="Type a message to broadcast to all active rooms..." />
 
-        {/* Preset messages */}
-        <div className="mb-4">
-          <p className="text-xs font-cyber text-slate-500 mb-2">QUICK PRESETS</p>
-          <div className="flex flex-wrap gap-2">
-            {presets.map((p) => (
-              <button key={p} onClick={() => setMessage(p)}
-                className="text-xs font-cyber px-2 py-1 rounded border border-dark-border text-slate-400 hover:text-slate-200 hover:bg-dark-card transition-colors">
-                {p.slice(0, 30)}…
-              </button>
-            ))}
+          <div className="mb-4">
+            <p className="text-xs font-cyber text-slate-500 mb-2">QUICK PRESETS</p>
+            <div className="flex flex-wrap gap-2">
+              {presets.map((p) => (
+                <button key={p} onClick={() => setMessage(p)}
+                  className="text-xs font-cyber px-2 py-1 rounded border border-dark-border text-slate-400 hover:text-slate-200 hover:bg-dark-card transition-colors">
+                  {p.slice(0, 30)}…
+                </button>
+              ))}
+            </div>
           </div>
+
+          <button onClick={send} disabled={sending || !message.trim()}
+            className="btn-primary w-full disabled:opacity-50">
+            {sending ? 'Sending...' : '📢 Send Broadcast'}
+          </button>
         </div>
 
-        <button onClick={send} disabled={sending || !message.trim()}
-          className="btn-primary w-full disabled:opacity-50">
-          {sending ? 'Sending...' : '📢 Broadcast to All Rooms'}
-        </button>
+        {/* Global Notification */}
+        <div className="card" style={{ borderColor: 'var(--neon-pink)' }}>
+          <p className="section-title text-neon-pink">SEND GLOBAL NOTIFICATION (Bell Icon)</p>
+          <p className="text-xs text-slate-500 font-cyber mb-4">
+            This saves a persistent alert to the notification bell for all online and offline users.
+          </p>
+          
+          <div className="space-y-3 mb-4">
+            <div>
+              <label className="text-xs font-cyber text-slate-400 mb-1 block">TITLE</label>
+              <input type="text" value={notifTitle} onChange={e => setNotifTitle(e.target.value)} placeholder="e.g. New Problem Added!" className="input-cyber w-full" />
+            </div>
+            <div>
+              <label className="text-xs font-cyber text-slate-400 mb-1 block">MESSAGE</label>
+              <textarea value={notifMessage} onChange={e => setNotifMessage(e.target.value)} placeholder="Type details..." className="input-cyber resize-none h-16 w-full" />
+            </div>
+          </div>
+
+          <button onClick={sendNotification} disabled={notifSending || !notifTitle.trim() || !notifMessage.trim()}
+            className="btn-primary w-full disabled:opacity-50 !bg-neon-pink/20 !border-neon-pink !text-neon-pink hover:!bg-neon-pink/30">
+            {notifSending ? 'Sending...' : '🔔 Push Notification'}
+          </button>
+        </div>
       </div>
 
       {/* Log */}
       {log.length > 0 && (
         <div className="card">
           <p className="section-title">BROADCAST HISTORY</p>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
+          <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
             {log.map((entry, i) => (
               <div key={i} className="flex items-start gap-3 text-xs font-cyber border-b border-dark-border pb-2">
                 <span className="text-slate-600 shrink-0">{new Date(entry.time).toLocaleTimeString()}</span>
