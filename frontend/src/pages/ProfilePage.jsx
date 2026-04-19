@@ -6,6 +6,7 @@ import { TopNav, PageShell } from './LandingPage';
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtTime(seconds) {
   if (!seconds) return '—';

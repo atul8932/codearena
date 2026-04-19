@@ -115,8 +115,8 @@ async function saveUserBattle(uid, battleData) {
     const isWin = battleData.rank === 1;
     const dateKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-    await userRef.set({
-      displayName: battleData.playerName || null,
+    // Build update object — only include displayName if we actually have a name
+    const userUpdate = {
       stats: {
         totalBattles:  admin.firestore.FieldValue.increment(1),
         wins:          admin.firestore.FieldValue.increment(isWin ? 1 : 0),
@@ -126,9 +126,14 @@ async function saveUserBattle(uid, battleData) {
       activity: {
         [dateKey]: admin.firestore.FieldValue.increment(1)
       }
-    }, { merge: true });
+    };
+    if (battleData.playerName) {
+      userUpdate.displayName = battleData.playerName;
+    }
 
-    console.log(`📊 Battle saved for user ${uid}`);
+    await userRef.set(userUpdate, { merge: true });
+
+    console.log(`📊 Battle saved for user ${uid} (+${battleData.score || 0} pts)`);
   } catch (err) {
     console.error('saveUserBattle error:', err.message);
   }

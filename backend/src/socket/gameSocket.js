@@ -288,10 +288,19 @@ function initGameSocket(io) {
     // ── START GAME (host only) ────────────────────────────────────────────
     socket.on('startGame', async ({ roomId }) => {
       try {
-        const room = await getRoom(roomId);
+        let room = await getRoom(roomId);
         if (!room) return;
         if (room.players[socket.id]?.isHost !== true) {
           return socket.emit('error', { message: 'Only the host can start the game' });
+        }
+
+        // Auto-mark host as ready so they participate in their own match
+        if (room.players[socket.id] && !room.players[socket.id].isReady) {
+          const updatedPlayers = { ...room.players };
+          updatedPlayers[socket.id] = { ...updatedPlayers[socket.id], isReady: true };
+          await updateRoom(roomId, { players: updatedPlayers });
+          room = await getRoom(roomId);
+          io.to(roomId).emit('playersUpdate', { players: room.players });
         }
 
         const realPlayers = Object.values(room.players).filter((p) => !p.isSpectator);
@@ -584,6 +593,7 @@ function initGameSocket(io) {
           solvedAt: accepted ? now : player.solvedAt,
           progress: Math.round(passedPct * 100),
           doubleScore: false,
+          language: language || player.language || 'unknown',  // persist language for battle history
         };
 
         const firstBlood = accepted && !room.firstBloodId;
@@ -944,18 +954,18 @@ async function endGame(io, roomId) {
     for (const p of leaderboard) {
       if (p.uid) {
         const timeTaken = p.solvedAt ? Math.floor((p.solvedAt - startTime) / 1000) : null;
-        const awardedScore = room.isPrivate ? (p.score || 0) : 0; // Public rooms only increase streak, not points
         saveUserBattle(p.uid, {
           roomId,
           rank:         p.rank,
           totalPlayers,
-          score:        awardedScore,
+          score:        p.score || 0,   // always save actual score
           status:       p.status || 'coding',
           problemTitle: room.problem?.title || 'Unknown',
           language:     p.language || 'unknown',
           timeTaken,
           date:         dateKey,
           isPrivate:    room.isPrivate || false,
+          playerName:   p.name || null,  // so displayName is stored
         }).catch(console.error);
       }
     }

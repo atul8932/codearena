@@ -101,7 +101,10 @@ export default function LobbyPage() {
 
 
   const handleReady  = () => socket.emit('playerReady', { roomId });
-  const handleStart  = () => { if (realPlayers.length < 1) return toast.error('Need at least 1 player!'); socket.emit('startGame', { roomId }); };
+  const handleStart  = () => {
+    if (realPlayers.length < 1) return toast.error('Need at least 1 player!');
+    socket.emit('startGame', { roomId });
+  };
   const handleCopy   = () => { navigator.clipboard.writeText(roomId); setCopied(true); toast.success('Room ID copied!', { icon: '📋' }); setTimeout(() => setCopied(false), 2000); };
   const handleToggle = () => socket.emit('toggleAnonymous', { roomId });
   const handleLeave  = () => {
@@ -148,13 +151,19 @@ export default function LobbyPage() {
             🚪 Leave
           </button>
 
+          {/* Host: ready toggle + start; Non-host: ready toggle only */}
           {isHost ? (
-            <button onClick={handleStart}
-              disabled={realPlayers.length < 1}
-              className="btn-primary text-xs sm:text-sm"
-              style={!allReady && realPlayers.length > 1 ? { opacity: 0.55 } : {}}>
-              {realPlayers.length < 2 ? '⚔️ Start Solo' : allReady ? '⚔️ Start Battle!' : `⏳ ${readyCount}/${realPlayers.length}`}
-            </button>
+            <>
+              <button onClick={handleReady}
+                className="btn-ghost text-xs sm:text-sm"
+                style={myData?.isReady ? { color: 'var(--green)', border: '1px solid rgba(34,197,94,0.4)' } : {}}>
+                {myData?.isReady ? '✓ Ready' : '⚡ Ready'}
+              </button>
+              <button onClick={handleStart}
+                className="btn-primary text-xs sm:text-sm">
+                {realPlayers.length < 2 ? '⚔️ Start Solo' : allReady ? '⚔️ Start Battle!' : `⏳ ${readyCount}/${realPlayers.length}`}
+              </button>
+            </>
           ) : (
             <button onClick={handleReady}
               className="btn-primary text-xs sm:text-sm"

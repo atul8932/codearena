@@ -72,12 +72,20 @@ export function useGame() {
     const onPlayerLeft = ({ players }) => setPlayers(players);
     off('playerLeft', onPlayerLeft);
 
-    const onPlayersUpdate = ({ players }) => setPlayers(players);
+    const onPlayersUpdate = ({ players }) => {
+      setPlayers(players);
+      // Sync the current player slice so their own ready/host state stays current
+      const currentPlayer = useGameStore.getState().player;
+      if (currentPlayer && players[currentPlayer.id]) {
+        setPlayer({ ...currentPlayer, ...players[currentPlayer.id] });
+      }
+    };
     off('playersUpdate', onPlayersUpdate);
 
     const onHostTransferred = ({ message }) => {
       toast.success(message, { icon: '👑' });
-      setPlayer({ ...useGameStore.getState().player, isHost: true });
+      const currentPlayer = useGameStore.getState().player;
+      if (currentPlayer) setPlayer({ ...currentPlayer, isHost: true });
     };
     off('hostTransferred', onHostTransferred);
 

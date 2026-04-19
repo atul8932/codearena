@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 
-const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 const TIER_COLORS = {
