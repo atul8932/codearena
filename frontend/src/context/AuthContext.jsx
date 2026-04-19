@@ -4,29 +4,41 @@ import {
   onAuthStateChanged,
   signOut,
   googleProvider,
-  signInWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendEmailVerification,
   sendPasswordResetEmail,
   updateProfile,
+  getRedirectResult,
+  signInWithRedirect,
 } from '../services/firebase';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser]       = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Listen for auth state changes (covers redirect result too)
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
     });
+
+    // Pick up the user after returning from Google redirect
+    getRedirectResult(auth).catch((err) => {
+      // Silently ignore — common non-error: user hasn't done a redirect yet
+      if (err?.code && err.code !== 'auth/popup-closed-by-user') {
+        console.error('getRedirectResult error:', err.code);
+      }
+    });
+
     return unsub;
   }, []);
 
-  const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
+  // Uses redirect instead of popup → eliminates cross-origin COOP warnings
+  const signInWithGoogle = () => signInWithRedirect(auth, googleProvider);
 
   const signUp = async (email, password, displayName) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
