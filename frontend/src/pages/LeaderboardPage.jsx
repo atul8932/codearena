@@ -216,6 +216,8 @@ export default function LeaderboardPage() {
           <div className="relative flex-1 min-w-[180px] max-w-xs">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: 'var(--text-dim)' }}>🔍</span>
             <input
+              id="leaderboard-search"
+              name="leaderboard-search"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search player..."

@@ -450,7 +450,7 @@ export default function LandingPage() {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Arena Name</label>
+                      <label htmlFor="playerName" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Arena Name</label>
                       <input id="playerName" value={playerName} onChange={(e) => setPlayerName(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
                         placeholder="Enter your name..." maxLength={20} className="input-cyber" autoFocus />
@@ -458,7 +458,7 @@ export default function LandingPage() {
 
                     {(mode === 'join' || mode === 'spectate') && (
                       <div>
-                        <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Room ID</label>
+                        <label htmlFor="roomId" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Room ID</label>
                         <input id="roomId" value={roomId} onChange={(e) => setRoomId(e.target.value.toUpperCase())}
                           onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
                           placeholder="e.g. XK72PQ9A" maxLength={8} className="input-cyber"
@@ -477,7 +477,7 @@ export default function LandingPage() {
                     {mode === 'create' && (
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Difficulty</label>
+                          <label htmlFor="difficulty" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Difficulty</label>
                           <select id="difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="input-cyber">
                             <option value="">Random</option>
                             <option value="Easy">Easy</option>
@@ -487,8 +487,8 @@ export default function LandingPage() {
                         </div>
                         <div className="flex gap-3">
                           <div className="flex-1">
-                            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Time Limit</label>
-                            <select value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} className="input-cyber">
+                            <label htmlFor="timeLimit" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Time Limit</label>
+                            <select id="timeLimit" value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} className="input-cyber">
                               <option value="5">5 Minutes</option>
                               <option value="10">10 Minutes</option>
                               <option value="20">20 Minutes</option>
@@ -497,8 +497,8 @@ export default function LandingPage() {
                             </select>
                           </div>
                           <div className="flex-1">
-                            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Max Players</label>
-                            <select value={maxPlayers} onChange={(e) => setMaxPlayers(e.target.value)} className="input-cyber">
+                            <label htmlFor="maxPlayers" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Max Players</label>
+                            <select id="maxPlayers" value={maxPlayers} onChange={(e) => setMaxPlayers(e.target.value)} className="input-cyber">
                               <option value="2">2 Players (Duel)</option>
                               <option value="4">4 Players</option>
                               <option value="8">8 Players</option>

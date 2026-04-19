@@ -252,7 +252,7 @@ function PowerUpBar({ roomId, players, myId }) {
     <div className="flex items-center gap-2 flex-wrap">
       <span className="text-xs font-mono" style={{ color: 'var(--text-dim)' }}>POWER-UPS:</span>
       {opponents.length > 0 && (
-        <select value={activeTarget || ''} onChange={(e) => setActiveTarget(e.target.value)}
+        <select id="powerup-target" name="powerup-target" value={activeTarget || ''} onChange={(e) => setActiveTarget(e.target.value)}
           className="text-xs rounded px-2 py-1 font-mono" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
           {opponents.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
@@ -683,7 +683,7 @@ export default function BattlePage() {
                     activePlayers.length > 0 && (
                       <div className="flex items-center gap-2 px-2">
                         <span className="text-xs font-mono" style={{ color: 'var(--text-dim)' }}>WATCHING:</span>
-                        <select value={spectatingTargetId || ''} onChange={(e) => setSpectatingTargetId(e.target.value)}
+                        <select id="spectate-target" name="spectate-target" value={spectatingTargetId || ''} onChange={(e) => setSpectatingTargetId(e.target.value)}
                           className="text-xs font-semibold rounded px-2 py-1 outline-none"
                           style={{ background: 'var(--surface)', color: 'var(--blue)', border: '1px solid var(--border)' }}>
                           {activePlayers.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -768,7 +768,9 @@ export default function BattlePage() {
                 <div ref={chatBottomRef} />
               </div>
               <form onSubmit={handleSendChat} className="flex gap-2">
-                <input
+                  <input
+                  id="chat-input"
+                  name="chat-input"
                   type="text"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}

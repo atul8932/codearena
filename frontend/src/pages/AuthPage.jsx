@@ -71,7 +71,7 @@ function FloatInput({ label, id, type='text', value, onChange, placeholder, auto
   const isPass = type === 'password';
   return (
     <div className="relative">
-      <label className="block text-xs font-semibold mb-1.5 tracking-wide"
+      <label htmlFor={id} className="block text-xs font-semibold mb-1.5 tracking-wide"
         style={{ color: focused ? 'var(--accent)' : 'var(--text-dim)' }}>
         {label}
       </label>
@@ -231,9 +231,13 @@ export default function AuthPage() {
 
   const handleGoogle = async () => {
     setGLoading(true);
-    try { const c = await signInWithGoogle(); if (c.user) navigate('/', { replace:true }); }
-    catch (err) { toast.error(fmtError(err.code)); }
-    finally { setGLoading(false); }
+    try { await signInWithGoogle(); }
+    catch (err) {
+      // signInWithRedirect throws only on configuration errors (not user cancel)
+      if (err?.code && err.code !== 'auth/popup-closed-by-user') {
+        toast.error(fmtError(err.code));
+      }
+    } finally { setGLoading(false); }
   };
 
   const handleSignUp = async (e) => {

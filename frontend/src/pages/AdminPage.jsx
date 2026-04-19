@@ -130,8 +130,10 @@ function LoginPage({ onLogin }) {
 
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="text-xs font-cyber text-slate-400 block mb-1.5">ADMIN PASSKEY</label>
+            <label htmlFor="admin-passkey" className="text-xs font-cyber text-slate-400 block mb-1.5">ADMIN PASSKEY</label>
             <input
+              id="admin-passkey"
+              name="admin-passkey"
               type="password"
               value={pass}
               onChange={(e) => setPass(e.target.value)}
@@ -365,7 +367,7 @@ function RoomsSection({ adminKey, toast }) {
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
             className="glass border border-neon-blue/30 rounded-2xl p-8 max-w-sm w-full mx-4">
             <p className="font-cyber text-neon-blue text-sm mb-4">Send message to room <strong>{msgRoom}</strong></p>
-            <textarea value={msgText} onChange={(e) => setMsgText(e.target.value)}
+            <textarea id="room-message" name="room-message" value={msgText} onChange={(e) => setMsgText(e.target.value)}
               className="input-cyber resize-none h-24 w-full mb-4" placeholder="Type message..." />
             <div className="flex gap-3">
               <button onClick={() => setMsgRoom(null)} className="flex-1 py-2 rounded-lg border border-dark-border text-slate-400 font-cyber text-sm">Cancel</button>
@@ -436,7 +438,7 @@ function BroadcastSection({ adminKey, toast }) {
         {/* Toast Broadcast */}
         <div className="card">
           <p className="section-title">SEND TO ALL ROOMS (In-Game Toast)</p>
-          <textarea value={message} onChange={(e) => setMessage(e.target.value)}
+          <textarea id="broadcast-message" name="broadcast-message" value={message} onChange={(e) => setMessage(e.target.value)}
             className="input-cyber resize-none h-24 w-full mb-3"
             placeholder="Type a message to broadcast to all active rooms..." />
 
@@ -467,12 +469,12 @@ function BroadcastSection({ adminKey, toast }) {
           
           <div className="space-y-3 mb-4">
             <div>
-              <label className="text-xs font-cyber text-slate-400 mb-1 block">TITLE</label>
-              <input type="text" value={notifTitle} onChange={e => setNotifTitle(e.target.value)} placeholder="e.g. New Problem Added!" className="input-cyber w-full" />
+              <label htmlFor="notif-title" className="text-xs font-cyber text-slate-400 mb-1 block">TITLE</label>
+              <input id="notif-title" name="notif-title" type="text" value={notifTitle} onChange={e => setNotifTitle(e.target.value)} placeholder="e.g. New Problem Added!" className="input-cyber w-full" />
             </div>
             <div>
-              <label className="text-xs font-cyber text-slate-400 mb-1 block">MESSAGE</label>
-              <textarea value={notifMessage} onChange={e => setNotifMessage(e.target.value)} placeholder="Type details..." className="input-cyber resize-none h-16 w-full" />
+              <label htmlFor="notif-message" className="text-xs font-cyber text-slate-400 mb-1 block">MESSAGE</label>
+              <textarea id="notif-message" name="notif-message" value={notifMessage} onChange={e => setNotifMessage(e.target.value)} placeholder="Type details..." className="input-cyber resize-none h-16 w-full" />
             </div>
           </div>
 
@@ -650,13 +652,13 @@ function ScheduleRoomForm({ problemId, adminKey, toast }) {
       <p className="text-neon-blue font-bold mb-2">⏱️ Schedule Global Battle</p>
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
-          <label className="text-xs text-slate-400 block mb-1">START TIME</label>
-          <input type="datetime-local" className="input-cyber w-full py-1 text-xs" 
+          <label htmlFor="schedule-start" className="text-xs text-slate-400 block mb-1">START TIME</label>
+          <input id="schedule-start" name="schedule-start" type="datetime-local" className="input-cyber w-full py-1 text-xs"
             value={startTime} onChange={e => setStartTime(e.target.value)} />
         </div>
         <div>
-          <label className="text-xs text-slate-400 block mb-1">DURATION (MINS)</label>
-          <input type="number" className="input-cyber w-full py-1 text-xs" 
+          <label htmlFor="schedule-duration" className="text-xs text-slate-400 block mb-1">DURATION (MINS)</label>
+          <input id="schedule-duration" name="schedule-duration" type="number" className="input-cyber w-full py-1 text-xs"
             value={durationMins} onChange={e => setDurationMins(e.target.value)} min="5" max="120" />
         </div>
       </div>
