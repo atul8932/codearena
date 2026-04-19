@@ -45,8 +45,8 @@ app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json({ limit: '50kb' }));
 
 // ─── REST Routes ─────────────────────────────────────────────────────────────
-app.use('/api/room',    roomRoutes);
-app.use('/api/admin',   adminRouter);
+app.use('/api/room', roomRoutes);
+app.use('/api/admin', adminRouter);
 app.use('/api/profile', require('./routes/profileRoutes'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok', time: Date.now() }));

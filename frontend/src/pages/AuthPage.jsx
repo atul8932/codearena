@@ -65,7 +65,7 @@ function PasswordStrength({ password }) {
 }
 
 // ── Floating input ────────────────────────────────────────────────────────────
-function FloatInput({ label, id, type='text', value, onChange, placeholder, autoFocus }) {
+function FloatInput({ label, id, type='text', value, onChange, placeholder, autoFocus, autoComplete }) {
   const [show, setShow] = useState(false);
   const [focused, setFocused] = useState(false);
   const isPass = type === 'password';
@@ -76,8 +76,9 @@ function FloatInput({ label, id, type='text', value, onChange, placeholder, auto
         {label}
       </label>
       <div className="relative">
-        <input id={id} type={isPass && !show ? 'password' : type === 'password' ? 'text' : type}
+        <input id={id} name={id} type={isPass && !show ? 'password' : type === 'password' ? 'text' : type}
           value={value} onChange={onChange} placeholder={placeholder} autoFocus={autoFocus}
+          autoComplete={autoComplete || 'off'}
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all duration-200 pr-10"
           style={{
@@ -195,7 +196,7 @@ function ForgotScreen({ onReset, onBack }) {
         <p className="text-sm mt-1" style={{ color:'var(--text-dim)' }}>We'll send a reset link to your email.</p>
       </div>
       <form onSubmit={handle} className="space-y-4">
-        <FloatInput label="Email address" id="reset-email" type="email" value={email}
+        <FloatInput label="Email address" id="reset-email" type="email" autoComplete="email" value={email}
           onChange={e => setEmail(e.target.value)} placeholder="you@example.com" autoFocus />
         <motion.button type="submit" disabled={loading} whileHover={{ scale:1.01 }} whileTap={{ scale:0.98 }}
           className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50"
@@ -231,13 +232,16 @@ export default function AuthPage() {
 
   const handleGoogle = async () => {
     setGLoading(true);
-    try { await signInWithGoogle(); }
-    catch (err) {
-      // signInWithRedirect throws only on configuration errors (not user cancel)
-      if (err?.code && err.code !== 'auth/popup-closed-by-user') {
+    try {
+      const cred = await signInWithGoogle();
+      if (cred?.user) navigate('/', { replace: true });
+    } catch (err) {
+      if (err?.code !== 'auth/popup-closed-by-user') {
         toast.error(fmtError(err.code));
       }
-    } finally { setGLoading(false); }
+    } finally {
+      setGLoading(false);
+    }
   };
 
   const handleSignUp = async (e) => {
@@ -311,19 +315,21 @@ export default function AuthPage() {
             {/* Form */}
             <form onSubmit={tab==='signin' ? handleSignIn : handleSignUp} className="space-y-4">
               {tab === 'signup' && (
-                <FloatInput label="Display Name" id="name" value={name}
+                <FloatInput label="Display Name" id="name" autoComplete="name" value={name}
                   onChange={e => setName(e.target.value)} placeholder="Your arena name" autoFocus />
               )}
-              <FloatInput label="Email address" id="email" type="email" value={email}
+              <FloatInput label="Email address" id="email" type="email" autoComplete="email" value={email}
                 onChange={e => setEmail(e.target.value)} placeholder="you@example.com"
                 autoFocus={tab==='signin'} />
               <div>
-                <FloatInput label="Password" id="password" type="password" value={password}
+                <FloatInput label="Password" id="password" type="password"
+                  autoComplete={tab === 'signup' ? 'new-password' : 'current-password'}
+                  value={password}
                   onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
                 {tab === 'signup' && <PasswordStrength password={password} />}
               </div>
               {tab === 'signup' && (
-                <FloatInput label="Confirm Password" id="confirm" type="password" value={confirm}
+                <FloatInput label="Confirm Password" id="confirm" type="password" autoComplete="new-password" value={confirm}
                   onChange={e => setConfirm(e.target.value)} placeholder="••••••••" />
               )}
 

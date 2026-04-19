@@ -4,13 +4,12 @@ import {
   onAuthStateChanged,
   signOut,
   googleProvider,
+  signInWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendEmailVerification,
   sendPasswordResetEmail,
   updateProfile,
-  getRedirectResult,
-  signInWithRedirect,
 } from '../services/firebase';
 
 const AuthContext = createContext(null);
@@ -20,25 +19,17 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Listen for auth state changes (covers redirect result too)
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
     });
-
-    // Pick up the user after returning from Google redirect
-    getRedirectResult(auth).catch((err) => {
-      // Silently ignore — common non-error: user hasn't done a redirect yet
-      if (err?.code && err.code !== 'auth/popup-closed-by-user') {
-        console.error('getRedirectResult error:', err.code);
-      }
-    });
-
     return unsub;
   }, []);
 
-  // Uses redirect instead of popup → eliminates cross-origin COOP warnings
-  const signInWithGoogle = () => signInWithRedirect(auth, googleProvider);
+  // NOTE: signInWithPopup shows a COOP console warning in Chrome — this is
+  // a harmless browser audit log from Google's own gapi library, NOT an error.
+  // Google sign-in works correctly despite the warning.
+  const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
 
   const signUp = async (email, password, displayName) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);

@@ -135,6 +135,7 @@ function LoginPage({ onLogin }) {
               id="admin-passkey"
               name="admin-passkey"
               type="password"
+              autoComplete="current-password"
               value={pass}
               onChange={(e) => setPass(e.target.value)}
               placeholder="Enter passkey..."
@@ -470,7 +471,7 @@ function BroadcastSection({ adminKey, toast }) {
           <div className="space-y-3 mb-4">
             <div>
               <label htmlFor="notif-title" className="text-xs font-cyber text-slate-400 mb-1 block">TITLE</label>
-              <input id="notif-title" name="notif-title" type="text" value={notifTitle} onChange={e => setNotifTitle(e.target.value)} placeholder="e.g. New Problem Added!" className="input-cyber w-full" />
+              <input id="notif-title" name="notif-title" type="text" autoComplete="off" value={notifTitle} onChange={e => setNotifTitle(e.target.value)} placeholder="e.g. New Problem Added!" className="input-cyber w-full" />
             </div>
             <div>
               <label htmlFor="notif-message" className="text-xs font-cyber text-slate-400 mb-1 block">MESSAGE</label>
@@ -653,12 +654,12 @@ function ScheduleRoomForm({ problemId, adminKey, toast }) {
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
           <label htmlFor="schedule-start" className="text-xs text-slate-400 block mb-1">START TIME</label>
-          <input id="schedule-start" name="schedule-start" type="datetime-local" className="input-cyber w-full py-1 text-xs"
+          <input id="schedule-start" name="schedule-start" type="datetime-local" autoComplete="off" className="input-cyber w-full py-1 text-xs"
             value={startTime} onChange={e => setStartTime(e.target.value)} />
         </div>
         <div>
           <label htmlFor="schedule-duration" className="text-xs text-slate-400 block mb-1">DURATION (MINS)</label>
-          <input id="schedule-duration" name="schedule-duration" type="number" className="input-cyber w-full py-1 text-xs"
+          <input id="schedule-duration" name="schedule-duration" type="number" autoComplete="off" className="input-cyber w-full py-1 text-xs"
             value={durationMins} onChange={e => setDurationMins(e.target.value)} min="5" max="120" />
         </div>
       </div>

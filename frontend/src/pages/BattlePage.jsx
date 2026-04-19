@@ -768,10 +768,11 @@ export default function BattlePage() {
                 <div ref={chatBottomRef} />
               </div>
               <form onSubmit={handleSendChat} className="flex gap-2">
-                  <input
+                <input
                   id="chat-input"
                   name="chat-input"
                   type="text"
+                  autoComplete="off"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   placeholder="Type a message..."
