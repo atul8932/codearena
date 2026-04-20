@@ -271,17 +271,24 @@ function initGameSocket(io) {
       }
     });
 
-    // ── TOGGLE ANONYMOUS MODE (host only) ─────────────────────────────────
-    socket.on('toggleAnonymous', async ({ roomId }) => {
+    // ── UPDATE SETTINGS (host only) ───────────────────────────────────────
+    socket.on('updateSettings', async ({ roomId, settings }) => {
       try {
         const room = await getRoom(roomId);
         if (!room) return;
         if (room.players[socket.id]?.isHost !== true) return;
 
-        await updateRoom(roomId, { anonymousMode: !room.anonymousMode });
-        io.to(roomId).emit('settingsUpdate', { anonymousMode: !room.anonymousMode });
+        const updates = {};
+        if (settings.difficulty !== undefined) updates.difficulty = settings.difficulty;
+        if (settings.timeLimit !== undefined) updates.duration = parseInt(settings.timeLimit) * 60;
+        if (settings.maxPlayers !== undefined) updates.maxPlayers = parseInt(settings.maxPlayers);
+        if (settings.anonymousMode !== undefined) updates.anonymousMode = settings.anonymousMode;
+
+        await updateRoom(roomId, updates);
+        io.to(roomId).emit('roomUpdated', { room: { ...room, ...updates } });
+        io.to(roomId).emit('commentary', { message: `⚙️ Room settings updated by host.` });
       } catch (err) {
-        console.error('toggleAnonymous error:', err);
+        console.error('updateSettings error:', err);
       }
     });
 
@@ -604,8 +611,8 @@ function initGameSocket(io) {
           await updateRoom(roomId, { players });
         }
 
-        // Emit result to submitter
-        socket.emit('submissionResult', {
+        // Emit result to submitter (and teammate if 2v2)
+        const resultPayload = {
           accepted,
           passed,
           total,
@@ -618,7 +625,17 @@ function initGameSocket(io) {
             accepted: r.accepted,
             time: r.time,
           })),
-        });
+        };
+
+        if (room.type === '2v2' && player.team) {
+          // Emit to all team members
+          const teamMembers = Object.values(players).filter(p => p.team === player.team);
+          teamMembers.forEach(m => {
+            io.to(m.id).emit('submissionResult', resultPayload);
+          });
+        } else {
+          socket.emit('submissionResult', resultPayload);
+        }
 
         // Broadcast leaderboard update
         const leaderboard = buildLeaderboard(players);
@@ -667,7 +684,7 @@ function initGameSocket(io) {
         socket.emit('runQueued', { message: 'Running sample test cases...' });
 
         const { passed, total, results } = await runTestCases(sanitized, language, sampleCases);
-        socket.emit('runResult', {
+        const runResultPayload = {
           accepted: passed === total && total > 0,
           passed,
           total,
@@ -678,7 +695,16 @@ function initGameSocket(io) {
             accepted: r.accepted,
             time: r.time,
           })),
-        });
+        };
+
+        if (room.type === '2v2' && player.team) {
+          const teamMembers = Object.values(room.players).filter(p => p.team === player.team);
+          teamMembers.forEach(m => {
+            io.to(m.id).emit('runResult', runResultPayload);
+          });
+        } else {
+          socket.emit('runResult', runResultPayload);
+        }
       } catch (err) {
         console.error('runCode error:', err);
         socket.emit('runResult', { error: 'Run failed' });

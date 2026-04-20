@@ -92,6 +92,9 @@ export function useGame() {
     const onSettingsUpdate = ({ anonymousMode }) => setAnonymousMode(anonymousMode);
     off('settingsUpdate', onSettingsUpdate);
 
+    const onRoomUpdated = ({ room }) => setRoom(room);
+    off('roomUpdated', onRoomUpdated);
+
     // Room reset (rematch)
     const onRoomReset = ({ players }) => {
       setPlayers(players);
@@ -211,6 +214,19 @@ export function useGame() {
     };
     off('firstBlood', onFirstBlood);
 
+    const onLiveCodeUpdate = ({ playerId, code, language }) => {
+      const state = useGameStore.getState();
+      const me = state.player;
+      const allPlayers = state.players;
+      if (me && allPlayers[playerId] && allPlayers[playerId].team === allPlayers[me.id]?.team && playerId !== me.id) {
+        if (code !== state.code) {
+          state.setCode(code);
+          if (language !== state.language) state.setLanguage(language);
+        }
+      }
+    };
+    off('liveCodeUpdate', onLiveCodeUpdate);
+
     // ── Anti-Cheat ───────────────────────────────────────────────────────
     const onPlayerWarned = ({ warnings, reason }) => {
       setWarnings(warnings);
@@ -313,6 +329,7 @@ export function useGame() {
       socket.off('cursorUpdate', onCursorUpdate);
       socket.off('problemSwitched', onProblemSwitched);
       socket.off('firstBlood', onFirstBlood);
+      socket.off('liveCodeUpdate', onLiveCodeUpdate);
       socket.off('playerWarned', onPlayerWarned);
       socket.off('playerDisqualified', onPlayerDisqualified);
       socket.off('playerTyping', onPlayerTyping);

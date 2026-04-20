@@ -270,8 +270,8 @@ export default function LandingPage() {
       const id = roomId.trim().toUpperCase();
       if (!id || id.length < 4) return toast.error('Enter a valid Room ID');
     }
-    setIsConnecting(true);
     const doEmit = () => {
+      setIsConnecting(true);
       if (mode === 'create') {
         socket.emit('createRoom', { playerName: name, isPrivate, difficulty: difficulty || null, timeLimit: parseInt(timeLimit), maxPlayers: parseInt(maxPlayers), uid, roomType });
       } else if (mode === 'spectate') {
@@ -280,9 +280,26 @@ export default function LandingPage() {
         socket.emit('joinRoom', { roomId: roomId.trim().toUpperCase(), playerName: name, uid });
       }
     };
-    if (socket.connected) { doEmit(); }
-    else { socket.off('connect', doEmit); socket.once('connect', doEmit); socket.connect(); }
-    setTimeout(() => setIsConnecting(false), 8000);
+
+    if (socket.connected) { 
+      doEmit(); 
+    } else { 
+      const onConnError = (err) => {
+        setIsConnecting(false);
+        toast.error(`Connection failed: ${err.message || 'Server unreachable'}`);
+        socket.off('connect', onConnSuccess);
+      };
+      const onConnSuccess = () => {
+        socket.off('connect_error', onConnError);
+        doEmit();
+      };
+      socket.once('connect', onConnSuccess);
+      socket.once('connect_error', onConnError);
+      socket.connect();
+    }
+    
+    // Safety timeout
+    setTimeout(() => setIsConnecting(false), 10000);
   };
 
   return (

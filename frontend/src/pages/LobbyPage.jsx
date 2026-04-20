@@ -207,12 +207,42 @@ export default function LobbyPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Difficulty</span>
-                <span className="text-sm font-semibold" style={{ color: diffColor }}>{room?.difficulty || 'Random'}</span>
+                {isHost ? (
+                  <select 
+                    value={room?.difficulty || ''} 
+                    onChange={(e) => socket.emit('updateSettings', { roomId, settings: { difficulty: e.target.value || null } })}
+                    className="bg-transparent text-sm font-semibold outline-none cursor-pointer border-b border-white/10 hover:border-accent transition-colors"
+                    style={{ color: diffColor }}
+                  >
+                    <option value="">Random</option>
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                  </select>
+                ) : (
+                  <span className="text-sm font-semibold" style={{ color: diffColor }}>{room?.difficulty || 'Random'}</span>
+                )}
               </div>
               <div className="divider" />
               <div className="flex items-center justify-between">
                 <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Duration</span>
-                <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>20 min</span>
+                {isHost ? (
+                  <select 
+                    value={Math.floor((room?.duration || 1200) / 60)} 
+                    onChange={(e) => socket.emit('updateSettings', { roomId, settings: { timeLimit: e.target.value } })}
+                    className="bg-transparent text-sm font-semibold outline-none cursor-pointer border-b border-white/10 hover:border-accent transition-colors text-white"
+                  >
+                    <option value="5">5 Minutes</option>
+                    <option value="10">10 Minutes</option>
+                    <option value="20">20 Minutes</option>
+                    <option value="30">30 Minutes</option>
+                    <option value="60">1 Hour</option>
+                  </select>
+                ) : (
+                  <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                    {Math.floor((room?.duration || 1200) / 60)} min
+                  </span>
+                )}
               </div>
               {player?.isHost && (
                 <>
